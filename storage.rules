@@ -1,0 +1,10 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Slice 0: Niega todo por defecto hasta el slice de movimientos / recibos.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "projects": {
+    "default": "pato-donald-dev",
+    "dev": "pato-donald-dev",
+    "prod": "pato-donald-prod"
+  }
+}

@@ -13,3 +13,4 @@ firebase-debug.log*
 .runtimeconfig.json
 # Config con claves de proyecto (se generan con flutterfire configure)
 app/android/app/google-services.json
+app/android/app/src/*/google-services.json

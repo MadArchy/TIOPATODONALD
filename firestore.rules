@@ -1,0 +1,27 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Funciones base de seguridad (docs/04_seguridad_y_functions.md y .agents/rules/firebase.md)
+    function estaAutenticado() {
+      return request.auth != null;
+    }
+
+    function esMiembroActivo(hogarId) {
+      return estaAutenticado() &&
+        exists(/databases/$(database)/documents/hogares/$(hogarId)/miembros/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/hogares/$(hogarId)/miembros/$(request.auth.uid)).data.estado == 'activo';
+    }
+
+    function esAdmin(hogarId) {
+      return estaAutenticado() &&
+        exists(/databases/$(database)/documents/hogares/$(hogarId)) &&
+        get(/databases/$(database)/documents/hogares/$(hogarId)).data.adminUid == request.auth.uid;
+    }
+
+    // Slice 0: Niega todo por defecto hasta abrir cada colección en sus slices correspondientes.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

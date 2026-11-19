@@ -1,0 +1,33 @@
+// Archivo base para el flavor DEV (pato-donald-dev).
+// Reemplázalo con las credenciales reales ejecutando:
+// flutterfire configure --project=pato-donald-dev --out=lib/firebase_options_dev.dart --platforms=android --android-package-name=co.patodonald.app.dev --android-out=android/app/src/dev/google-services.json
+
+import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
+import 'package:flutter/foundation.dart'
+    show defaultTargetPlatform, kIsWeb, TargetPlatform;
+
+class DefaultFirebaseOptionsDev {
+  static FirebaseOptions get currentPlatform {
+    if (kIsWeb) {
+      throw UnsupportedError(
+        'DefaultFirebaseOptionsDev no está configurado para web.',
+      );
+    }
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.android:
+        return android;
+      default:
+        throw UnsupportedError(
+          'DefaultFirebaseOptionsDev solo soporta Android en el MVP.',
+        );
+    }
+  }
+
+  static const FirebaseOptions android = FirebaseOptions(
+    apiKey: 'demo-api-key-pato-donald-dev',
+    appId: '1:000000000000:android:0000000000000000000000',
+    messagingSenderId: '000000000000',
+    projectId: 'pato-donald-dev',
+    storageBucket: 'pato-donald-dev.firebasestorage.app',
+  );
+}
