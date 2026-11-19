@@ -31,6 +31,11 @@ import {
   ejecutarCambiarPresupuesto,
 } from "./presupuesto";
 import {ejecutarCerrarPeriodos} from "./cerrar_periodos";
+import {
+  ConfirmarPagoInternoInput,
+  ConfirmarPagoInternoResult,
+  ejecutarConfirmarPagoInterno,
+} from "./deudas_internas";
 
 if (getApps().length === 0) {
   initializeApp();
@@ -186,5 +191,21 @@ export const cerrarPeriodos = onSchedule(
   },
   async () => {
     await ejecutarCerrarPeriodos(getFirestore());
+  }
+);
+
+/**
+ * Slice 6: acreedor confirma pago interno → baja saldo; en 0 → pagada.
+ */
+export const confirmarPagoInterno = onCall(
+  {region: REGION},
+  async (
+    request: CallableRequest<ConfirmarPagoInternoInput>
+  ): Promise<ConfirmarPagoInternoResult> => {
+    return ejecutarConfirmarPagoInterno(
+      getFirestore(),
+      request.auth?.uid,
+      request.data
+    );
   }
 );

@@ -14,6 +14,7 @@ import '../../features/hogar/presentation/miembros_qr_screen.dart';
 import '../../features/hogar/presentation/sin_hogar_screen.dart';
 import '../../features/hogar/presentation/unirse_deeplink_screen.dart';
 import '../../features/deudas/presentation/deudas_screen.dart';
+import '../../features/deudas_internas/presentation/detalle_deuda_interna_screen.dart';
 import '../../features/home/presentation/dashboard_admin_screen.dart';
 import '../../features/home/presentation/desglose_miembro_screen.dart';
 import '../../features/home/presentation/inicio_screen.dart';
@@ -28,8 +29,8 @@ import '../../features/presupuesto/presentation/configurar_presupuesto_periodo_s
 /// - Con sesión, `hogarId != null` y sin presupuesto del período → `/configurar-periodo` (permitiendo `/miembros-qr`, `/perfil`)
 /// - Con sesión, `hogarId != null` y con presupuesto → `/inicio` (permitiendo
 ///   `/configurar-periodo`, `/miembros-qr`, `/unirse`, `/perfil`, `/historial`,
-///   `/movimiento/:id`, `/gastos-fijos`, `/deudas`, `/dashboard-admin`,
-///   `/desglose-miembro/:uid`)
+///   `/movimiento/:id`, `/gastos-fijos`, `/deudas`, `/deudas-internas/:id`,
+///   `/dashboard-admin`, `/desglose-miembro/:uid`)
 String? evaluarRedireccionRouter({
   required String ubicacionActual,
   required String? uid,
@@ -93,6 +94,7 @@ String? evaluarRedireccionRouter({
   };
   if (rutasConHogar.contains(ubicacionActual) ||
       ubicacionActual.startsWith('/movimiento/') ||
+      ubicacionActual.startsWith('/deudas-internas/') ||
       ubicacionActual.startsWith('/desglose-miembro/')) {
     return null;
   }
@@ -211,6 +213,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/deudas',
         name: 'deudas',
         builder: (context, state) => const DeudasScreen(),
+      ),
+      GoRoute(
+        path: '/deudas-internas/:id',
+        name: 'deuda-interna',
+        builder: (context, state) => DetalleDeudaInternaScreen(
+          deudaId: state.pathParameters['id'] ?? '',
+        ),
       ),
       GoRoute(
         path: '/perfil',

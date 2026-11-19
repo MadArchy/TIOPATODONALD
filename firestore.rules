@@ -126,6 +126,31 @@ service cloud.firestore {
         allow delete: if false;
       }
 
+      // Slice 6 — deudas entre miembros
+      match /deudasInternas/{deudaInternaId} {
+        allow read: if esMiembroActivo(hogarId) &&
+          esParteDeudaInternaOAdmin(hogarId);
+
+        allow create: if esMiembroActivo(hogarId) &&
+          deudaInternaCreateOk();
+
+        allow update: if esMiembroActivo(hogarId) &&
+          deudaInternaUpdateOk();
+
+        allow delete: if false;
+
+        match /pagos/{pagoId} {
+          allow read: if esMiembroActivo(hogarId) &&
+            esParteDeudaInternaPadreOAdmin(hogarId, deudaInternaId);
+
+          allow create: if esMiembroActivo(hogarId) &&
+            pagoInternoCreateOk(hogarId, deudaInternaId);
+
+          allow update: if false;
+          allow delete: if false;
+        }
+      }
+
       match /auditoria/{auditoriaId} {
         allow read: if esMiembroActivo(hogarId);
         allow write: if false;
@@ -281,6 +306,65 @@ service cloud.firestore {
         d.diaEsperado >= 1 &&
         d.diaEsperado <= 31 &&
         d.activo is bool;
+    }
+
+    function esParteDeudaInternaOAdmin(hogarId) {
+      return esAdmin(hogarId) ||
+        resource.data.acreedorUid == request.auth.uid ||
+        resource.data.deudorUid == request.auth.uid;
+    }
+
+    function esParteDeudaInternaPadreOAdmin(hogarId, deudaInternaId) {
+      let d = get(/databases/$(database)/documents/hogares/$(hogarId)/deudasInternas/$(deudaInternaId)).data;
+      return esAdmin(hogarId) ||
+        d.acreedorUid == request.auth.uid ||
+        d.deudorUid == request.auth.uid;
+    }
+
+    function deudaInternaCreateOk() {
+      let d = request.resource.data;
+      return d.acreedorUid == request.auth.uid &&
+        d.deudorUid is string &&
+        d.deudorUid.size() > 0 &&
+        d.deudorUid != request.auth.uid &&
+        d.montoInicial is int &&
+        d.montoInicial > 0 &&
+        d.saldo is int &&
+        d.saldo == d.montoInicial &&
+        d.concepto is string &&
+        d.concepto.size() > 0 &&
+        d.concepto.size() <= 200 &&
+        d.estado == 'pendiente' &&
+        d.creadaEn == request.time;
+    }
+
+    function deudaInternaUpdateOk() {
+      let before = resource.data;
+      let after = request.resource.data;
+      return before.deudorUid == request.auth.uid &&
+        before.estado == 'pendiente' &&
+        after.diff(before).affectedKeys().hasOnly(['estado']) &&
+        after.estado in ['aceptada', 'rechazada'] &&
+        after.acreedorUid == before.acreedorUid &&
+        after.deudorUid == before.deudorUid &&
+        after.montoInicial == before.montoInicial &&
+        after.saldo == before.saldo &&
+        after.concepto == before.concepto &&
+        after.creadaEn == before.creadaEn;
+    }
+
+    function pagoInternoCreateOk(hogarId, deudaInternaId) {
+      let d = get(/databases/$(database)/documents/hogares/$(hogarId)/deudasInternas/$(deudaInternaId)).data;
+      let p = request.resource.data;
+      return d.deudorUid == request.auth.uid &&
+        d.estado == 'aceptada' &&
+        p.registradoPor == request.auth.uid &&
+        p.monto is int &&
+        p.monto > 0 &&
+        p.fecha is timestamp &&
+        p.fecha <= request.time &&
+        p.confirmado == false &&
+        p.confirmadoEn == null;
     }
 
     // Niega todo lo demás por defecto hasta abrir cada colección en sus slices correspondientes.

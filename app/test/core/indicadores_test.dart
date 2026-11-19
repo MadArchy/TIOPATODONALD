@@ -387,4 +387,34 @@ void main() {
       expect(ant.fin.month, 11);
     });
   });
+
+  group('deudas internas (Slice 6) no afectan indicadores', () {
+    test('cobros/pagos entre miembros no entran a gastado ni semáforo', () {
+      // Las deudas internas no son movimientos; solo cuentan gasto/pagoCuota.
+      const presupuesto = 4000000;
+      final movimientos = <MovimientoIndicador>[
+        _gasto(500000),
+      ];
+      // Un cobro interno de 2.000.000 no aparece en movimientos → no cambia nada.
+      final ind = calcularIndicadoresPeriodo(
+        presupuesto: presupuesto,
+        movimientos: movimientos,
+        periodo: periodoDe(DateTime(2026, 11, 25), 15),
+        hoy: DateTime(2026, 11, 25),
+      );
+      expect(ind.gastado, 500000);
+      expect(ind.semaforo, Semaforo.verde);
+      expect(ind.disponible, 3500000);
+
+      // Incluso con más gastos reales, el semáforo solo mira movimientos.
+      final ind2 = calcularIndicadoresPeriodo(
+        presupuesto: presupuesto,
+        movimientos: [...movimientos, _gasto(3600000)],
+        periodo: periodoDe(DateTime(2026, 11, 25), 15),
+        hoy: DateTime(2026, 11, 25),
+      );
+      expect(ind2.gastado, 4100000);
+      expect(ind2.semaforo, Semaforo.rojo);
+    });
+  });
 }

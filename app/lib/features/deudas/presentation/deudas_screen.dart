@@ -9,15 +9,36 @@ import '../../../data/models/deuda.dart';
 import '../../../data/repositories/auth_repository.dart';
 import '../../../data/repositories/deudas_repository.dart';
 import '../../../data/repositories/hogar_repository.dart';
+import '../../deudas_internas/presentation/entre_nosotros_tab.dart';
 import '../../home/application/home_providers.dart';
 
-/// Lista de deudas externas del hogar (Slice 5).
-class DeudasScreen extends ConsumerWidget {
+/// Lista de deudas del hogar: externas (Slice 5) + entre miembros (Slice 6).
+class DeudasScreen extends ConsumerStatefulWidget {
   const DeudasScreen({super.key});
 
+  @override
+  ConsumerState<DeudasScreen> createState() => _DeudasScreenState();
+}
+
+class _DeudasScreenState extends ConsumerState<DeudasScreen>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabs;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabs = TabController(length: 2, vsync: this);
+    _tabs.addListener(() => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _tabs.dispose();
+    super.dispose();
+  }
+
   Future<void> _abrirFormulario(
-    BuildContext context,
-    WidgetRef ref, {
+    BuildContext context, {
     Deuda? existente,
   }) async {
     final online = ref.read(tieneInternetProvider).value ?? false;
@@ -39,7 +60,6 @@ class DeudasScreen extends ConsumerWidget {
 
   Future<void> _desactivar(
     BuildContext context,
-    WidgetRef ref,
     Deuda deuda,
   ) async {
     final online = ref.read(tieneInternetProvider).value ?? false;
@@ -95,7 +115,7 @@ class DeudasScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final async = ref.watch(deudasHogarProvider);
     final usuario = ref.watch(usuarioActualProvider).value;
     final hogar = ref.watch(hogarActualProvider).value;
@@ -103,123 +123,139 @@ class DeudasScreen extends ConsumerWidget {
         usuario != null &&
         hogar.adminUid == usuario.uid;
     final ahora = ref.watch(clockProvider).now();
+    final enExternas = _tabs.index == 0;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Deudas')),
-      floatingActionButton: esAdmin
+      appBar: AppBar(
+        title: const Text('Deudas'),
+        bottom: TabBar(
+          controller: _tabs,
+          tabs: const [
+            Tab(text: 'Externas'),
+            Tab(text: 'Entre nosotros'),
+          ],
+        ),
+      ),
+      floatingActionButton: esAdmin && enExternas
           ? FloatingActionButton(
               key: const Key('fab_nueva_deuda'),
               tooltip: 'Nueva deuda',
-              onPressed: () => _abrirFormulario(context, ref),
+              onPressed: () => _abrirFormulario(context),
               child: const Icon(Icons.add),
             )
           : null,
-      body: async.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, _) => const Center(
-          child: Text('No pudimos cargar las deudas del hogar.'),
-        ),
-        data: (lista) {
-          final activas =
-              lista.where((d) => d.estado == 'activa').toList();
-          if (activas.isEmpty) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Text(
-                  esAdmin
-                      ? 'Aún no hay deudas activas. Toca + para registrar '
-                          'un crédito, tarjeta o préstamo del hogar.'
-                      : 'Aún no hay deudas activas en el hogar. '
-                          'Cuando el admin las registre, las verás aquí.',
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            );
-          }
-          return ListView.separated(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 88),
-            itemCount: activas.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 10),
-            itemBuilder: (context, i) {
-              final d = activas[i];
-              final proxima = proximaFechaPago(diaPago: d.diaPago, hoy: ahora);
-              final avance = avanceDeuda(
-                saldoInicial: d.saldoInicial,
-                saldoActual: d.saldoActual,
-              );
-              final pagado = d.saldoInicial - d.saldoActual;
-              return Card(
-                key: Key('tarjeta_deuda_${d.id}'),
-                child: Padding(
-                  padding: const EdgeInsets.all(14),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Row(
+      body: TabBarView(
+        controller: _tabs,
+        children: [
+          async.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (_, _) => const Center(
+              child: Text('No pudimos cargar las deudas del hogar.'),
+            ),
+            data: (lista) {
+              final activas =
+                  lista.where((d) => d.estado == 'activa').toList();
+              if (activas.isEmpty) {
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Text(
+                      esAdmin
+                          ? 'Aún no hay deudas activas. Toca + para registrar '
+                              'un crédito, tarjeta o préstamo del hogar.'
+                          : 'Aún no hay deudas activas en el hogar. '
+                              'Cuando el admin las registre, las verás aquí.',
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                );
+              }
+              return ListView.separated(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 88),
+                itemCount: activas.length,
+                separatorBuilder: (_, _) => const SizedBox(height: 10),
+                itemBuilder: (context, i) {
+                  final d = activas[i];
+                  final proxima =
+                      proximaFechaPago(diaPago: d.diaPago, hoy: ahora);
+                  final avance = avanceDeuda(
+                    saldoInicial: d.saldoInicial,
+                    saldoActual: d.saldoActual,
+                  );
+                  final pagado = d.saldoInicial - d.saldoActual;
+                  return Card(
+                    key: Key('tarjeta_deuda_${d.id}'),
+                    child: Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Expanded(
-                            child: Text(
-                              d.entidad,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleMedium
-                                  ?.copyWith(fontWeight: FontWeight.bold),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  d.entidad,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleMedium
+                                      ?.copyWith(fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                              if (esAdmin)
+                                PopupMenuButton<String>(
+                                  onSelected: (v) async {
+                                    if (v == 'editar') {
+                                      await _abrirFormulario(
+                                        context,
+                                        existente: d,
+                                      );
+                                    } else if (v == 'desactivar') {
+                                      await _desactivar(context, d);
+                                    }
+                                  },
+                                  itemBuilder: (_) => const [
+                                    PopupMenuItem(
+                                      value: 'editar',
+                                      child: Text('Editar'),
+                                    ),
+                                    PopupMenuItem(
+                                      value: 'desactivar',
+                                      child: Text('Desactivar'),
+                                    ),
+                                  ],
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Text('Saldo: ${formatCop(d.saldoActual)}'),
+                          Text('Cuota: ${formatCop(d.cuotaMensual)}'),
+                          Text(
+                            'Próximo pago: ${formatearDiaMesCorto(proxima)}',
+                          ),
+                          const SizedBox(height: 10),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(6),
+                            child: LinearProgressIndicator(
+                              value: avance,
+                              minHeight: 8,
                             ),
                           ),
-                          if (esAdmin)
-                            PopupMenuButton<String>(
-                              onSelected: (v) async {
-                                if (v == 'editar') {
-                                  await _abrirFormulario(
-                                    context,
-                                    ref,
-                                    existente: d,
-                                  );
-                                } else if (v == 'desactivar') {
-                                  await _desactivar(context, ref, d);
-                                }
-                              },
-                              itemBuilder: (_) => const [
-                                PopupMenuItem(
-                                  value: 'editar',
-                                  child: Text('Editar'),
-                                ),
-                                PopupMenuItem(
-                                  value: 'desactivar',
-                                  child: Text('Desactivar'),
-                                ),
-                              ],
-                            ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Pagado ${formatCop(pagado < 0 ? 0 : pagado)} '
+                            'de ${formatCop(d.saldoInicial)}',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
                         ],
                       ),
-                      const SizedBox(height: 6),
-                      Text('Saldo: ${formatCop(d.saldoActual)}'),
-                      Text('Cuota: ${formatCop(d.cuotaMensual)}'),
-                      Text(
-                        'Próximo pago: ${formatearDiaMesCorto(proxima)}',
-                      ),
-                      const SizedBox(height: 10),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(6),
-                        child: LinearProgressIndicator(
-                          value: avance,
-                          minHeight: 8,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Pagado ${formatCop(pagado < 0 ? 0 : pagado)} '
-                        'de ${formatCop(d.saldoInicial)}',
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ],
-                  ),
-                ),
+                    ),
+                  );
+                },
               );
             },
-          );
-        },
+          ),
+          const EntreNosotrosTab(),
+        ],
       ),
     );
   }

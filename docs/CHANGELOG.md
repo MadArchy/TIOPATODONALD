@@ -2,6 +2,16 @@
 
 Una entrada por slice cerrado: fecha, slice, qué se hizo, decisiones tomadas.
 
+## 2026-11-18 — Slice 6: Deudas entre miembros
+- **Modelo/repo**: `DeudaInterna` + `PagoInterno` (freezed) y `DeudasInternasRepository` (crear cobro, aceptar/rechazar, registrar pago; confirmar vía callable).
+- **UI**: `/deudas` con pestañas Externas | Entre nosotros (Me deben / Debo); detalle `/deudas-internas/:id` (aceptar/rechazar, registrar pago, confirmar).
+- **Avisos in-app**: bandeja derivada de `deudasInternas` + `pagos` pendientes de acción (sin colección `avisos` nueva). Push queda en Slice 9.
+- **Core**: `calcularConfirmacionPagoInterno` / `construirAvisosInternos`; test de que deudas internas no afectan gastado ni semáforo.
+- **Functions**: callable `confirmarPagoInterno` (acreedor, transacción, idempotente; saldo 0 → `pagada`).
+- **Rules**: read acreedor/deudor/admin; create acreedor `pendiente`; update deudor solo `pendiente`→`aceptada|rechazada`; pagos create deudor `confirmado==false`; pagos update false.
+- **Índices**: `deudasInternas` por `deudorUid+estado` y `acreedorUid+estado`.
+- **Gaps conscientes**: push FCM (Slice 9); correcciones (Slice 7).
+
 ## 2026-11-18 — Slice 5: Deudas externas y pago de cuota
 - **Modelo/repo**: `Deuda` + `DeudasRepository` (crear/editar/desactivar con internet obligatorio; `saldoActual` solo lo baja el servidor).
 - **UI**: pantalla `/deudas` (lista activa con saldo, cuota, próxima fecha, barra de avance); admin crea/edita/desactiva. Inicio muestra cuotas comprometidas y “Próximos pagos”. Nuevo movimiento con tipo **Cuota** (elige deuda, monto prellenado).

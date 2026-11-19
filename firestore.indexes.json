@@ -24,6 +24,22 @@
         { "fieldPath": "deudaId", "order": "ASCENDING" },
         { "fieldPath": "periodoId", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "deudasInternas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "deudorUid", "order": "ASCENDING" },
+        { "fieldPath": "estado", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "deudasInternas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "acreedorUid", "order": "ASCENDING" },
+        { "fieldPath": "estado", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []
