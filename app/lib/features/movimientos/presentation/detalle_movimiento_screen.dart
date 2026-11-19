@@ -6,6 +6,7 @@ import '../../../core/movimientos_validacion.dart';
 import '../../../core/utils/clock.dart';
 import '../../../core/utils/dinero.dart';
 import '../../../data/repositories/auth_repository.dart';
+import '../../../data/repositories/deudas_repository.dart';
 import '../../../data/repositories/movimientos_repository.dart';
 
 /// Detalle de un movimiento; edición menor de nota/categoría si < 24 h.
@@ -136,20 +137,44 @@ class _DetalleMovimientoScreenState
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Icon(
-                  mov.categoria != null
-                      ? iconoCategoria(mov.categoria!)
-                      : Icons.payments_rounded,
+              if (mov.tipo == 'pagoCuota')
+                Builder(
+                  builder: (context) {
+                    final deudas =
+                        ref.watch(deudasHogarProvider).value ?? const [];
+                    String etiqueta = 'Pago de cuota';
+                    final id = mov.deudaId;
+                    if (id != null) {
+                      for (final d in deudas) {
+                        if (d.id == id) {
+                          etiqueta = d.entidad;
+                          break;
+                        }
+                      }
+                    }
+                    return ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.account_balance_outlined),
+                      title: const Text('Deuda'),
+                      subtitle: Text(etiqueta),
+                    );
+                  },
+                )
+              else
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(
+                    mov.categoria != null
+                        ? iconoCategoria(mov.categoria!)
+                        : Icons.payments_rounded,
+                  ),
+                  title: const Text('Categoría'),
+                  subtitle: Text(
+                    mov.categoria != null
+                        ? etiquetaCategoria(mov.categoria!)
+                        : 'Sin categoría',
+                  ),
                 ),
-                title: const Text('Categoría'),
-                subtitle: Text(
-                  mov.categoria != null
-                      ? etiquetaCategoria(mov.categoria!)
-                      : 'Sin categoría',
-                ),
-              ),
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.event_rounded),

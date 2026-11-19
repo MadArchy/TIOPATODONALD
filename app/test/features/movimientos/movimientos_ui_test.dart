@@ -3,6 +3,7 @@ import 'package:app/core/movimientos_validacion.dart';
 import 'package:app/core/router/app_router.dart';
 import 'package:app/core/utils/clock.dart';
 import 'package:app/data/models/usuario.dart';
+import 'package:app/data/repositories/deudas_repository.dart';
 import 'package:app/features/movimientos/presentation/nuevo_movimiento_sheet.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -19,7 +20,7 @@ void main() {
       creadoEn: DateTime(2026, 11, 1),
     );
 
-    test('permite /historial, /gastos-fijos y /movimiento/:id con hogar', () {
+    test('permite /historial, /gastos-fijos, /deudas y /movimiento/:id', () {
       expect(
         evaluarRedireccionRouter(
           ubicacionActual: '/historial',
@@ -33,6 +34,16 @@ void main() {
       expect(
         evaluarRedireccionRouter(
           ubicacionActual: '/gastos-fijos',
+          uid: 'u1',
+          usuario: usuario,
+          cargandoEstado: false,
+          tienePresupuestoVigente: true,
+        ),
+        isNull,
+      );
+      expect(
+        evaluarRedireccionRouter(
+          ubicacionActual: '/deudas',
           uid: 'u1',
           usuario: usuario,
           cargandoEstado: false,
@@ -77,7 +88,7 @@ void main() {
   });
 
   group('NuevoMovimientoSheet smoke', () {
-    testWidgets('muestra Gasto/Ingreso, monto, categorías y Guardar',
+    testWidgets('muestra Gasto/Ingreso/Cuota, monto, categorías y Guardar',
         (tester) async {
       await tester.pumpWidget(
         ProviderScope(
@@ -85,6 +96,7 @@ void main() {
             clockProvider.overrideWithValue(
               FixedClock(DateTime(2026, 11, 18, 12)),
             ),
+            deudasActivasProvider.overrideWith((ref) => const []),
           ],
           child: const MaterialApp(
             home: Scaffold(
@@ -98,6 +110,7 @@ void main() {
       expect(find.text('Nuevo'), findsOneWidget);
       expect(find.text('Gasto'), findsOneWidget);
       expect(find.text('Ingreso'), findsOneWidget);
+      expect(find.text('Cuota'), findsOneWidget);
       expect(find.byKey(const Key('campo_monto_movimiento')), findsOneWidget);
       expect(find.byKey(const Key('grid_categorias')), findsOneWidget);
       expect(find.byKey(const Key('btn_guardar_movimiento')), findsOneWidget);

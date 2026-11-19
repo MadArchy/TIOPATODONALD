@@ -1,11 +1,14 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/deudas_fecha.dart';
 import '../../../core/indicadores.dart';
 import '../../../core/periodo.dart';
 import '../../../core/utils/clock.dart';
+import '../../../data/models/deuda.dart';
 import '../../../data/models/movimiento.dart';
 import '../../../data/models/presupuesto.dart';
 import '../../../data/repositories/auth_repository.dart';
+import '../../../data/repositories/deudas_repository.dart';
 import '../../../data/repositories/hogar_repository.dart';
 import '../../../data/repositories/movimientos_repository.dart';
 
@@ -91,13 +94,49 @@ final indicadoresPropiosProvider = Provider<IndicadoresPeriodo?>((ref) {
   );
 });
 
-/// Hook de deudas externas (Slice 5): lista vacía hasta entonces.
+/// Deudas del hogar → indicadores de cuota (Slice 5).
 final deudasCuotaHookProvider = Provider<List<DeudaCuotaIndicador>>((ref) {
-  return const <DeudaCuotaIndicador>[];
+  final deudas = ref.watch(deudasHogarProvider).value ?? const <Deuda>[];
+  return deudas
+      .map(
+        (d) => DeudaCuotaIndicador(
+          id: d.id,
+          cuotaMensual: d.cuotaMensual,
+          estado: d.estado,
+        ),
+      )
+      .toList();
 });
 
 final cuotasComprometidasProvider = Provider<int>((ref) {
   return cuotasComprometidas(ref.watch(deudasCuotaHookProvider));
+});
+
+/// Próximo pago de una deuda activa (para Inicio).
+class ProximoPagoDeuda {
+  const ProximoPagoDeuda({
+    required this.deuda,
+    required this.fecha,
+  });
+
+  final Deuda deuda;
+  final DateTime fecha;
+}
+
+/// Deudas activas ordenadas por próxima fecha de pago.
+final proximosPagosProvider = Provider<List<ProximoPagoDeuda>>((ref) {
+  final activas = ref.watch(deudasActivasProvider);
+  final ahora = ref.watch(clockProvider).now();
+  final lista = activas
+      .map(
+        (d) => ProximoPagoDeuda(
+          deuda: d,
+          fecha: proximaFechaPago(diaPago: d.diaPago, hoy: ahora),
+        ),
+      )
+      .toList()
+    ..sort((a, b) => a.fecha.compareTo(b.fecha));
+  return lista;
 });
 
 /// Fecha en que aplicaría un `diaInicioPendiente` (primer D pendiente
@@ -227,7 +266,7 @@ final dashboardMiembrosProvider = Provider<List<TarjetaMiembroDashboard>>((ref) 
 });
 
 /// Margen real del hogar: suma de ingresos/gastado de cada miembro en su
-/// período vigente − cuotasPendientes (hook 0 hasta Slice 5).
+/// período vigente − cuotasPendientes (deudas activas sin pagoCuota del admin).
 final margenRealHogarProvider = Provider<int>((ref) {
   final tarjetas = ref.watch(dashboardMiembrosProvider);
   var ingresosHogar = 0;
@@ -239,7 +278,6 @@ final margenRealHogarProvider = Provider<int>((ref) {
     gastadoHogar += ind.gastado;
   }
 
-  // Cuotas pendientes: período del admin (Slice 5 llenará deudas).
   final deudas = ref.watch(deudasCuotaHookProvider);
   final admin = ref.watch(usuarioActualProvider).value;
   final ahora = ref.watch(clockProvider).now();

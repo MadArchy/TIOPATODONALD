@@ -8,11 +8,13 @@ import '../../../core/categorias.dart';
 import '../../../core/periodo.dart';
 import '../../../core/utils/clock.dart';
 import '../../../core/utils/dinero.dart';
+import '../../../data/models/deuda.dart';
 import '../../../data/models/gasto_fijo.dart';
 import '../../../data/repositories/auth_repository.dart';
+import '../../../data/repositories/deudas_repository.dart';
 import '../../../data/repositories/movimientos_repository.dart';
 
-/// Abre la hoja "Nuevo" para registrar gasto o ingreso (máx. 3 toques).
+/// Abre la hoja "Nuevo" para registrar gasto, ingreso o pago de cuota.
 Future<void> mostrarNuevoMovimientoSheet(
   BuildContext context, {
   GastoFijo? desdeGastoFijo,
@@ -39,6 +41,7 @@ class _NuevoMovimientoSheetState extends ConsumerState<NuevoMovimientoSheet> {
   String _tipo = 'gasto';
   late final TextEditingController _montoCtrl;
   String? _categoria;
+  String? _deudaId;
   DateTime? _fecha;
   final TextEditingController _notaCtrl = TextEditingController();
   File? _foto;
@@ -80,6 +83,27 @@ class _NuevoMovimientoSheetState extends ConsumerState<NuevoMovimientoSheet> {
   List<String> get _categorias =>
       _tipo == 'gasto' ? CategoriasGasto.ids : CategoriasIngreso.ids;
 
+  void _cambiarTipo(String tipo) {
+    setState(() {
+      _tipo = tipo;
+      _categoria = null;
+      _deudaId = null;
+      if (tipo != 'pagoCuota') {
+        // No vaciar monto si venía de gasto fijo.
+        if (widget.desdeGastoFijo == null) {
+          // Mantener monto tipado por el usuario.
+        }
+      }
+    });
+  }
+
+  void _elegirDeuda(Deuda deuda) {
+    setState(() {
+      _deudaId = deuda.id;
+      _montoCtrl.text = deuda.cuotaMensual.toString();
+    });
+  }
+
   Future<void> _elegirFoto(ImageSource source) async {
     final picker = ImagePicker();
     final x = await picker.pickImage(source: source, imageQuality: 85);
@@ -100,7 +124,13 @@ class _NuevoMovimientoSheetState extends ConsumerState<NuevoMovimientoSheet> {
       setState(() => _error = 'Escribe un monto mayor a \$0.');
       return;
     }
-    if (_categoria == null) {
+
+    if (_tipo == 'pagoCuota') {
+      if (_deudaId == null || _deudaId!.isEmpty) {
+        setState(() => _error = 'Elige la deuda que estás pagando.');
+        return;
+      }
+    } else if (_categoria == null) {
       setState(() => _error = 'Elige una categoría.');
       return;
     }
@@ -120,7 +150,8 @@ class _NuevoMovimientoSheetState extends ConsumerState<NuevoMovimientoSheet> {
             diaInicioPeriodo: usuario.diaInicioPeriodo,
             tipo: _tipo,
             monto: monto,
-            categoria: _categoria,
+            categoria: _tipo == 'pagoCuota' ? null : _categoria,
+            deudaId: _tipo == 'pagoCuota' ? _deudaId : null,
             fecha: fecha,
             ahora: ahora,
             nota: _notaCtrl.text,
@@ -151,6 +182,8 @@ class _NuevoMovimientoSheetState extends ConsumerState<NuevoMovimientoSheet> {
     final periodo = usuario == null
         ? null
         : periodoDe(ahora, usuario.diaInicioPeriodo);
+    final deudasActivas = ref.watch(deudasActivasProvider);
+    final desdeFijo = widget.desdeGastoFijo != null;
 
     return Padding(
       padding: EdgeInsets.only(
@@ -176,7 +209,7 @@ class _NuevoMovimientoSheetState extends ConsumerState<NuevoMovimientoSheet> {
             ),
             const SizedBox(height: 12),
             Text(
-              widget.desdeGastoFijo != null
+              desdeFijo
                   ? 'Registrar ${widget.desdeGastoFijo!.nombre}'
                   : 'Nuevo',
               style: theme.textTheme.titleLarge?.copyWith(
@@ -190,16 +223,12 @@ class _NuevoMovimientoSheetState extends ConsumerState<NuevoMovimientoSheet> {
               segments: const [
                 ButtonSegment(value: 'gasto', label: Text('Gasto')),
                 ButtonSegment(value: 'ingreso', label: Text('Ingreso')),
+                ButtonSegment(value: 'pagoCuota', label: Text('Cuota')),
               ],
               selected: {_tipo},
-              onSelectionChanged: widget.desdeGastoFijo != null
+              onSelectionChanged: desdeFijo
                   ? null
-                  : (s) {
-                      setState(() {
-                        _tipo = s.first;
-                        _categoria = null;
-                      });
-                    },
+                  : (s) => _cambiarTipo(s.first),
             ),
             const SizedBox(height: 20),
             TextField(
@@ -214,63 +243,92 @@ class _NuevoMovimientoSheetState extends ConsumerState<NuevoMovimientoSheet> {
                 hintText: '\$0',
                 border: InputBorder.none,
               ),
-              autofocus: widget.desdeGastoFijo == null,
+              autofocus: !desdeFijo,
             ),
             const SizedBox(height: 8),
-            Text(
-              'Categoría',
-              style: theme.textTheme.titleSmall,
-            ),
-            const SizedBox(height: 8),
-            GridView.builder(
-              key: const Key('grid_categorias'),
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 4,
-                mainAxisSpacing: 8,
-                crossAxisSpacing: 8,
-                childAspectRatio: 0.85,
-              ),
-              itemCount: _categorias.length,
-              itemBuilder: (context, i) {
-                final id = _categorias[i];
-                final seleccionada = _categoria == id;
-                return InkWell(
-                  key: Key('cat_$id'),
-                  borderRadius: BorderRadius.circular(12),
-                  onTap: () => setState(() => _categoria = id),
-                  child: Ink(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      color: seleccionada
-                          ? theme.colorScheme.primaryContainer
-                          : theme.colorScheme.surfaceContainerHighest,
-                      border: Border.all(
+            if (_tipo == 'pagoCuota') ...[
+              Text('Deuda', style: theme.textTheme.titleSmall),
+              const SizedBox(height: 8),
+              if (deudasActivas.isEmpty)
+                Text(
+                  'No hay deudas activas. El admin debe registrarlas primero.',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.error,
+                  ),
+                  textAlign: TextAlign.center,
+                )
+              else
+                ...deudasActivas.map((d) {
+                  final seleccionada = _deudaId == d.id;
+                  return Card(
+                    key: Key('opcion_deuda_${d.id}'),
+                    color: seleccionada
+                        ? theme.colorScheme.primaryContainer
+                        : null,
+                    child: ListTile(
+                      title: Text(d.entidad),
+                      subtitle: Text(
+                        'Cuota ${formatCop(d.cuotaMensual)} · '
+                        'Saldo ${formatCop(d.saldoActual)}',
+                      ),
+                      selected: seleccionada,
+                      onTap: () => _elegirDeuda(d),
+                    ),
+                  );
+                }),
+            ] else ...[
+              Text('Categoría', style: theme.textTheme.titleSmall),
+              const SizedBox(height: 8),
+              GridView.builder(
+                key: const Key('grid_categorias'),
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 4,
+                  mainAxisSpacing: 8,
+                  crossAxisSpacing: 8,
+                  childAspectRatio: 0.85,
+                ),
+                itemCount: _categorias.length,
+                itemBuilder: (context, i) {
+                  final id = _categorias[i];
+                  final seleccionada = _categoria == id;
+                  return InkWell(
+                    key: Key('cat_$id'),
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () => setState(() => _categoria = id),
+                    child: Ink(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
                         color: seleccionada
-                            ? theme.colorScheme.primary
-                            : Colors.transparent,
-                        width: 2,
+                            ? theme.colorScheme.primaryContainer
+                            : theme.colorScheme.surfaceContainerHighest,
+                        border: Border.all(
+                          color: seleccionada
+                              ? theme.colorScheme.primary
+                              : Colors.transparent,
+                          width: 2,
+                        ),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(iconoCategoria(id), size: 28),
+                          const SizedBox(height: 4),
+                          Text(
+                            etiquetaCategoria(id),
+                            textAlign: TextAlign.center,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.labelSmall,
+                          ),
+                        ],
                       ),
                     ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(iconoCategoria(id), size: 28),
-                        const SizedBox(height: 4),
-                        Text(
-                          etiquetaCategoria(id),
-                          textAlign: TextAlign.center,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.labelSmall,
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
+                  );
+                },
+              ),
+            ],
             const SizedBox(height: 8),
             TextButton(
               key: const Key('btn_mas_opciones'),

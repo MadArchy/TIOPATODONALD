@@ -66,6 +66,7 @@ class _InicioScreenState extends ConsumerState<InicioScreen> {
     final indicadores = ref.watch(indicadoresPropiosProvider);
     final pendientes = ref.watch(gastosFijosPendientesHoyProvider);
     final cuotas = ref.watch(cuotasComprometidasProvider);
+    final proximosPagos = ref.watch(proximosPagosProvider);
     final resumenAnterior = ref.watch(resumenPeriodoAnteriorProvider).value;
     final ahora = ref.watch(clockProvider).now();
     final esAdmin = hogar != null &&
@@ -244,6 +245,41 @@ class _InicioScreenState extends ConsumerState<InicioScreen> {
                     const SizedBox(height: 24),
                     DesgloseCategorias(indicadores: indicadores),
                   ],
+                  if (proximosPagos.isNotEmpty) ...[
+                    const SizedBox(height: 24),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Próximos pagos',
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleMedium
+                                ?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        TextButton(
+                          key: const Key('btn_ver_todas_deudas'),
+                          onPressed: () => context.push('/deudas'),
+                          child: const Text('Ver todas'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    ...proximosPagos.take(5).map((p) {
+                      return ListTile(
+                        key: Key('proximo_pago_${p.deuda.id}'),
+                        contentPadding: EdgeInsets.zero,
+                        leading: const Icon(Icons.event_outlined),
+                        title: Text(p.deuda.entidad),
+                        subtitle: Text(
+                          '${formatearDiaMesCorto(p.fecha)} · '
+                          '${formatCop(p.deuda.cuotaMensual)}',
+                        ),
+                        onTap: () => context.push('/deudas'),
+                      );
+                    }),
+                  ],
                   if (pendientes.isNotEmpty) ...[
                     const SizedBox(height: 24),
                     Text(
@@ -283,6 +319,13 @@ class _InicioScreenState extends ConsumerState<InicioScreen> {
                     onPressed: () => context.push('/historial'),
                     icon: const Icon(Icons.receipt_long_rounded),
                     label: const Text('Ver historial'),
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    key: const Key('btn_abrir_deudas'),
+                    onPressed: () => context.push('/deudas'),
+                    icon: const Icon(Icons.account_balance_outlined),
+                    label: const Text('Deudas del hogar'),
                   ),
                   if (esAdmin) ...[
                     const SizedBox(height: 12),

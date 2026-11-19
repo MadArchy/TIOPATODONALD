@@ -87,7 +87,7 @@ service cloud.firestore {
       match /movimientos/{movimientoId} {
         allow read: if esMiembroActivo(hogarId);
 
-        allow create: if esMiembroActivo(hogarId) && movimientoCreateOk();
+        allow create: if esMiembroActivo(hogarId) && movimientoCreateOk(hogarId);
 
         allow update: if esMiembroActivo(hogarId) &&
           (edicionMenorOk() || completarFotoPathOk(hogarId, movimientoId));
@@ -109,6 +109,21 @@ service cloud.firestore {
 
         allow delete: if esMiembroActivo(hogarId) &&
           resource.data.uid == request.auth.uid;
+      }
+
+      // Slice 5 — deudas externas (saldoActual solo servidor / create igual a inicial)
+      match /deudas/{deudaId} {
+        allow read: if esMiembroActivo(hogarId);
+
+        allow create: if esMiembroActivo(hogarId) &&
+          esAdmin(hogarId) &&
+          deudaCreateOk();
+
+        allow update: if esMiembroActivo(hogarId) &&
+          esAdmin(hogarId) &&
+          deudaUpdateOk();
+
+        allow delete: if false;
       }
 
       match /auditoria/{auditoriaId} {
@@ -164,14 +179,20 @@ service cloud.firestore {
         fecha > request.time - duration.value(62, 'd');
     }
 
-    function movimientoCreateOk() {
+    function deudaExiste(hogarId, deudaId) {
+      return deudaId is string &&
+        deudaId.size() > 0 &&
+        exists(/databases/$(database)/documents/hogares/$(hogarId)/deudas/$(deudaId));
+    }
+
+    function movimientoCreateOk(hogarId) {
       let d = request.resource.data;
       return d.uid == request.auth.uid &&
         d.tipo in ['gasto', 'ingreso', 'pagoCuota'] &&
         d.monto is int &&
         d.monto > 0 &&
         categoriaMovimientoOk(d.tipo, d.categoria) &&
-        (d.tipo != 'pagoCuota' || (d.deudaId is string && d.deudaId.size() > 0)) &&
+        (d.tipo != 'pagoCuota' || deudaExiste(hogarId, d.deudaId)) &&
         (d.tipo == 'pagoCuota' || d.deudaId == null) &&
         periodoMovimientoOk(d.fecha, d.periodoId) &&
         d.estado == 'activo' &&
@@ -182,6 +203,42 @@ service cloud.firestore {
         (d.fotoPath == null || d.fotoPath is string) &&
         (d.editadoEn == null) &&
         (d.gastoFijoId == null || d.gastoFijoId is string);
+    }
+
+    function deudaCreateOk() {
+      let d = request.resource.data;
+      return d.entidad is string &&
+        d.entidad.size() > 0 &&
+        d.saldoInicial is int &&
+        d.saldoInicial > 0 &&
+        d.saldoActual is int &&
+        d.saldoActual == d.saldoInicial &&
+        d.cuotaMensual is int &&
+        d.cuotaMensual > 0 &&
+        d.diaPago is int &&
+        d.diaPago >= 1 &&
+        d.diaPago <= 31 &&
+        (d.numeroCuotas == null || (d.numeroCuotas is int && d.numeroCuotas > 0)) &&
+        d.estado == 'activa' &&
+        d.creadaEn == request.time;
+    }
+
+    function deudaUpdateOk() {
+      let before = resource.data;
+      let after = request.resource.data;
+      return after.saldoActual == before.saldoActual &&
+        after.saldoInicial == before.saldoInicial &&
+        after.creadaEn == before.creadaEn &&
+        after.entidad is string &&
+        after.entidad.size() > 0 &&
+        after.cuotaMensual is int &&
+        after.cuotaMensual > 0 &&
+        after.diaPago is int &&
+        after.diaPago >= 1 &&
+        after.diaPago <= 31 &&
+        (after.numeroCuotas == null ||
+          (after.numeroCuotas is int && after.numeroCuotas > 0)) &&
+        after.estado in ['activa', 'pagada', 'desactivada'];
     }
 
     function edicionMenorOk() {

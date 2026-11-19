@@ -1,4 +1,7 @@
-import {esEdicionMenor} from "../src/movimientos";
+import {
+  calcularAplicacionPagoCuota,
+  esEdicionMenor,
+} from "../src/movimientos";
 
 describe("esEdicionMenor", () => {
   it("true solo si cambian nota/categoria/editadoEn", () => {
@@ -29,5 +32,55 @@ describe("esEdicionMenor", () => {
         {fotoPath: "recibos/h/m.jpg"}
       )
     ).toBe(false);
+  });
+});
+
+describe("calcularAplicacionPagoCuota (idempotencia)", () => {
+  it("baja saldo y marca aplicar en el primer paso", () => {
+    const r = calcularAplicacionPagoCuota({
+      saldoAplicado: false,
+      saldoActual: 500000,
+      monto: 150000,
+      estadoActual: "activa",
+    });
+    expect(r.aplicar).toBe(true);
+    expect(r.nuevoSaldo).toBe(350000);
+    expect(r.nuevoEstado).toBe("activa");
+  });
+
+  it("si saldoAplicado ya es true, no vuelve a bajar", () => {
+    const primero = calcularAplicacionPagoCuota({
+      saldoAplicado: false,
+      saldoActual: 150000,
+      monto: 150000,
+      estadoActual: "activa",
+    });
+    expect(primero.aplicar).toBe(true);
+    expect(primero.nuevoSaldo).toBe(0);
+    expect(primero.nuevoEstado).toBe("pagada");
+
+    // Segunda ejecución del trigger (mismo movimiento ya marcado).
+    const segundo = calcularAplicacionPagoCuota({
+      saldoAplicado: true,
+      saldoActual: primero.nuevoSaldo,
+      monto: 150000,
+      estadoActual: primero.nuevoEstado,
+    });
+    expect(segundo.aplicar).toBe(false);
+    expect(segundo.nuevoSaldo).toBe(0);
+    expect(segundo.nuevoEstado).toBe("pagada");
+    expect(segundo.motivo).toBe("ya_aplicado");
+  });
+
+  it("no deja saldo negativo", () => {
+    const r = calcularAplicacionPagoCuota({
+      saldoAplicado: false,
+      saldoActual: 50000,
+      monto: 80000,
+      estadoActual: "activa",
+    });
+    expect(r.aplicar).toBe(true);
+    expect(r.nuevoSaldo).toBe(0);
+    expect(r.nuevoEstado).toBe("pagada");
   });
 });

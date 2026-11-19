@@ -272,6 +272,15 @@ class _PerfilProvisionalScreenState
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => context.push('/gastos-fijos'),
                 ),
+                ListTile(
+                  key: const Key('btn_ir_deudas'),
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.account_balance_outlined),
+                  title: const Text('Deudas del hogar'),
+                  subtitle: const Text('Créditos, tarjetas y cuotas'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => context.push('/deudas'),
+                ),
               ],
               const SizedBox(height: 24),
               OutlinedButton.icon(

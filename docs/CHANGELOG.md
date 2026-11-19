@@ -2,6 +2,14 @@
 
 Una entrada por slice cerrado: fecha, slice, qué se hizo, decisiones tomadas.
 
+## 2026-11-18 — Slice 5: Deudas externas y pago de cuota
+- **Modelo/repo**: `Deuda` + `DeudasRepository` (crear/editar/desactivar con internet obligatorio; `saldoActual` solo lo baja el servidor).
+- **UI**: pantalla `/deudas` (lista activa con saldo, cuota, próxima fecha, barra de avance); admin crea/edita/desactiva. Inicio muestra cuotas comprometidas y “Próximos pagos”. Nuevo movimiento con tipo **Cuota** (elige deuda, monto prellenado).
+- **Core**: `proximaFechaPago` / `avanceDeuda`; `deudasCuotaHookProvider` cableado a deudas reales → cuotasPendientes en margen real del admin.
+- **Functions**: trigger `alCrearMovimiento` (pagoCuota → baja saldo en transacción, `saldoAplicado`, estado `pagada` en 0; idempotente).
+- **Rules**: `hogares/{h}/deudas` create/update solo admin; create exige `saldoActual == saldoInicial`; update no toca `saldoActual`; `pagoCuota` exige `deudaId` existente.
+- **Gaps conscientes**: aviso push el día anterior (Slice 9); deudas entre miembros (Slice 6); reclasificar gasto→pagoCuota vía corrección (Slice 7).
+
 ## 2026-11-18 — Slice 4: Home, presupuesto y dashboard admin
 - **Core (`app/lib/core/indicadores.dart`)**: funciones puras de gastado, ingresos, disponible, disponiblePorDia, proyección (truncada), semáforo, avisoPreventivo, porcentajeReducible, cuotasComprometidas/Pendientes, margenReal, alertasNuevas y `calcularIndicadoresPeriodo`. Tests con el ejemplo oficial de `docs/02_reglas_negocio.md` §2 y bordes (día 1/2/último, presupuesto 0, sin movimientos).
 - **Inicio**: semáforo con texto+ícono, “Te quedan \$X por día”, barra 50/80/100, aviso preventivo, ingresos/cuotas (hook 0 hasta deudas), desglose por categoría, gastos fijos, banner de alertas 50/80/100 con persistencia en `alertasEnviadas`, tarjeta “Cierre de tu período” el día 1 si hay `resumenes` del período anterior.

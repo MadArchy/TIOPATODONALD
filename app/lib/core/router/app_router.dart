@@ -13,6 +13,7 @@ import '../../features/hogar/presentation/escanear_qr_screen.dart';
 import '../../features/hogar/presentation/miembros_qr_screen.dart';
 import '../../features/hogar/presentation/sin_hogar_screen.dart';
 import '../../features/hogar/presentation/unirse_deeplink_screen.dart';
+import '../../features/deudas/presentation/deudas_screen.dart';
 import '../../features/home/presentation/dashboard_admin_screen.dart';
 import '../../features/home/presentation/desglose_miembro_screen.dart';
 import '../../features/home/presentation/inicio_screen.dart';
@@ -27,7 +28,8 @@ import '../../features/presupuesto/presentation/configurar_presupuesto_periodo_s
 /// - Con sesión, `hogarId != null` y sin presupuesto del período → `/configurar-periodo` (permitiendo `/miembros-qr`, `/perfil`)
 /// - Con sesión, `hogarId != null` y con presupuesto → `/inicio` (permitiendo
 ///   `/configurar-periodo`, `/miembros-qr`, `/unirse`, `/perfil`, `/historial`,
-///   `/movimiento/:id`, `/gastos-fijos`, `/dashboard-admin`, `/desglose-miembro/:uid`)
+///   `/movimiento/:id`, `/gastos-fijos`, `/deudas`, `/dashboard-admin`,
+///   `/desglose-miembro/:uid`)
 String? evaluarRedireccionRouter({
   required String ubicacionActual,
   required String? uid,
@@ -86,6 +88,7 @@ String? evaluarRedireccionRouter({
     '/miembros-qr',
     '/historial',
     '/gastos-fijos',
+    '/deudas',
     '/dashboard-admin',
   };
   if (rutasConHogar.contains(ubicacionActual) ||
@@ -203,6 +206,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/gastos-fijos',
         name: 'gastos-fijos',
         builder: (context, state) => const GastosFijosScreen(),
+      ),
+      GoRoute(
+        path: '/deudas',
+        name: 'deudas',
+        builder: (context, state) => const DeudasScreen(),
       ),
       GoRoute(
         path: '/perfil',

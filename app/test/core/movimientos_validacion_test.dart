@@ -58,6 +58,33 @@ void main() {
       );
       expect(r.esValido, isFalse);
     });
+
+    test('acepta pagoCuota con deudaId y sin categoría', () {
+      final r = validarCreacionMovimiento(
+        tipo: 'pagoCuota',
+        monto: 150000,
+        categoria: null,
+        deudaId: 'deuda-banco',
+        fecha: DateTime(2026, 11, 18),
+        ahora: ahora,
+        diaInicioPeriodo: diaInicio,
+        periodoId: '2026-11-01',
+      );
+      expect(r.esValido, isTrue);
+    });
+
+    test('rechaza pagoCuota sin deudaId', () {
+      final r = validarCreacionMovimiento(
+        tipo: 'pagoCuota',
+        monto: 150000,
+        categoria: null,
+        fecha: DateTime(2026, 11, 18),
+        ahora: ahora,
+        diaInicioPeriodo: diaInicio,
+        periodoId: '2026-11-01',
+      );
+      expect(r.esValido, isFalse);
+    });
   });
 
   group('puedeEdicionMenor', () {

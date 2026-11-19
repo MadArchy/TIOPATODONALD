@@ -1,7 +1,10 @@
 import {getApps, initializeApp} from "firebase-admin/app";
 import {getFirestore} from "firebase-admin/firestore";
 import {onCall, onRequest, CallableRequest} from "firebase-functions/v2/https";
-import {onDocumentUpdated} from "firebase-functions/v2/firestore";
+import {
+  onDocumentCreated,
+  onDocumentUpdated,
+} from "firebase-functions/v2/firestore";
 import {onSchedule} from "firebase-functions/v2/scheduler";
 import {setGlobalOptions} from "firebase-functions/v2";
 import {
@@ -18,7 +21,10 @@ import {
   UnirseConCodigoInput,
   UnirseConCodigoResult,
 } from "./hogar";
-import {manejarAlEditarMovimiento} from "./movimientos";
+import {
+  manejarAlCrearMovimiento,
+  manejarAlEditarMovimiento,
+} from "./movimientos";
 import {
   CambiarPresupuestoInput,
   CambiarPresupuestoResult,
@@ -136,6 +142,19 @@ export const alEditarMovimiento = onDocumentUpdated(
   },
   async (event) => {
     await manejarAlEditarMovimiento(getFirestore(), event);
+  }
+);
+
+/**
+ * Slice 5: al crear pagoCuota, baja saldoActual (idempotente con saldoAplicado).
+ */
+export const alCrearMovimiento = onDocumentCreated(
+  {
+    document: "hogares/{hogarId}/movimientos/{movimientoId}",
+    region: REGION,
+  },
+  async (event) => {
+    await manejarAlCrearMovimiento(getFirestore(), event);
   }
 );
 
