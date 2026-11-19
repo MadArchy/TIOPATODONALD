@@ -2,6 +2,14 @@
 
 Una entrada por slice cerrado: fecha, slice, qué se hizo, decisiones tomadas.
 
+## 2026-11-19 — Slice 8: Chat Nivel 1 y puertas de IA
+- **Dominio**: `Intencion` (freezed), `Interprete` / `InterpreteReglas` / `InterpreteIA` (stub); diccionario de categorías; `parseMontoChat` (85 mil, 1,2 millones, etc.).
+- **Tests**: tabla ≥ 60 frases familiares con ≥ 90% acierto; test de desacople con intérprete falso.
+- **Datos/UI**: `MensajeChat` + `ChatRepository`; pantalla `/chat` (burbujas, sugerencias, tarjeta [Guardar]/[Cambiar]); `noEntendido` abre formulario prellenado; movimientos con `origen: chat`.
+- **Functions**: callable `asistente` responde “próximamente”. `hogares.ia` ya se crea apagado en `crearHogar`.
+- **Rules**: `chats/{uid}/mensajes` solo ese uid; create ok; update solo `estado`.
+- **Gaps conscientes**: frases reales de la familia (refinar diccionario); IA Nivel 2 (fuera del MVP); push (Slice 9).
+
 ## 2026-11-19 — Slice 7: Correcciones y auditoría
 - **Core**: `correcciones.dart` — plazo (período del movimiento + 5 días), validación de cambios, ajuste de saldo por reclasificación gasto↔pagoCuota (ida y vuelta), acción de auditoría.
 - **Modelo/repo**: `Correccion` + `EntradaAuditoria` (freezed); `CorreccionesRepository` (pedir, observar pendientes/auditoría, callable `resolverCorreccion`).

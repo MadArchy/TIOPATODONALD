@@ -98,6 +98,19 @@ void main() {
         isNull,
       );
     });
+
+    test('permite /chat (slice 8)', () {
+      expect(
+        evaluarRedireccionRouter(
+          ubicacionActual: '/chat',
+          uid: 'u1',
+          usuario: usuario,
+          cargandoEstado: false,
+          tienePresupuestoVigente: true,
+        ),
+        isNull,
+      );
+    });
   });
 
   group('NuevoMovimientoSheet smoke', () {

@@ -146,6 +146,12 @@ class _InicioScreenState extends ConsumerState<InicioScreen> {
             ),
           ],
           IconButton(
+            key: const Key('btn_ir_a_chat'),
+            tooltip: 'Chat',
+            onPressed: () => context.push('/chat'),
+            icon: const Icon(Icons.chat_bubble_outline),
+          ),
+          IconButton(
             key: const Key('btn_ir_a_miembros_desde_inicio'),
             tooltip: 'Miembros y QR',
             onPressed: () => context.push('/miembros-qr'),

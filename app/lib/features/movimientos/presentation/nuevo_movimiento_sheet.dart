@@ -18,19 +18,44 @@ import '../../../data/repositories/movimientos_repository.dart';
 Future<void> mostrarNuevoMovimientoSheet(
   BuildContext context, {
   GastoFijo? desdeGastoFijo,
+  String? prefillTipo,
+  int? prefillMonto,
+  String? prefillCategoria,
+  String? prefillDeudaId,
+  String? prefillNota,
 }) {
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
-    builder: (ctx) => NuevoMovimientoSheet(desdeGastoFijo: desdeGastoFijo),
+    builder: (ctx) => NuevoMovimientoSheet(
+      desdeGastoFijo: desdeGastoFijo,
+      prefillTipo: prefillTipo,
+      prefillMonto: prefillMonto,
+      prefillCategoria: prefillCategoria,
+      prefillDeudaId: prefillDeudaId,
+      prefillNota: prefillNota,
+    ),
   );
 }
 
 class NuevoMovimientoSheet extends ConsumerStatefulWidget {
-  const NuevoMovimientoSheet({super.key, this.desdeGastoFijo});
+  const NuevoMovimientoSheet({
+    super.key,
+    this.desdeGastoFijo,
+    this.prefillTipo,
+    this.prefillMonto,
+    this.prefillCategoria,
+    this.prefillDeudaId,
+    this.prefillNota,
+  });
 
   final GastoFijo? desdeGastoFijo;
+  final String? prefillTipo;
+  final int? prefillMonto;
+  final String? prefillCategoria;
+  final String? prefillDeudaId;
+  final String? prefillNota;
 
   @override
   ConsumerState<NuevoMovimientoSheet> createState() =>
@@ -59,7 +84,20 @@ class _NuevoMovimientoSheetState extends ConsumerState<NuevoMovimientoSheet> {
       _categoria = fijo.categoria;
       _montoCtrl = TextEditingController(text: fijo.monto.toString());
     } else {
-      _montoCtrl = TextEditingController();
+      _tipo = widget.prefillTipo ?? 'gasto';
+      _categoria = widget.prefillCategoria;
+      _deudaId = widget.prefillDeudaId;
+      _montoCtrl = TextEditingController(
+        text: widget.prefillMonto?.toString() ?? '',
+      );
+      if (widget.prefillNota != null) {
+        _notaCtrl.text = widget.prefillNota!;
+      }
+      if (widget.prefillNota != null ||
+          widget.prefillMonto != null ||
+          widget.prefillCategoria != null) {
+        _masOpciones = true;
+      }
     }
   }
 

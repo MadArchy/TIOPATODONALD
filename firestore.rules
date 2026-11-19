@@ -175,6 +175,21 @@ service cloud.firestore {
         allow read: if esMiembroActivo(hogarId);
         allow write: if false;
       }
+
+      // Slice 8 — chat por usuario
+      match /chats/{chatUid}/mensajes/{mensajeId} {
+        allow read: if esMiembroActivo(hogarId) && request.auth.uid == chatUid;
+
+        allow create: if esMiembroActivo(hogarId) &&
+          request.auth.uid == chatUid &&
+          mensajeChatCreateOk();
+
+        allow update: if esMiembroActivo(hogarId) &&
+          request.auth.uid == chatUid &&
+          mensajeChatUpdateOk();
+
+        allow delete: if false;
+      }
     }
 
     function categoriasGasto() {
@@ -392,6 +407,27 @@ service cloud.firestore {
         d.resueltaPor == null &&
         d.resueltaEn == null &&
         d.motivoRechazo == null;
+    }
+
+    function mensajeChatCreateOk() {
+      let d = request.resource.data;
+      return d.rol in ['usuario', 'app', 'ia'] &&
+        d.texto is string &&
+        d.texto.size() > 0 &&
+        d.texto.size() <= 2000 &&
+        d.estado in ['propuesto', 'confirmado', 'descartado'] &&
+        d.fecha == request.time &&
+        (!('intencion' in d) || d.intencion == null || d.intencion is map);
+    }
+
+    function mensajeChatUpdateOk() {
+      let before = resource.data;
+      let after = request.resource.data;
+      return after.diff(before).affectedKeys().hasOnly(['estado']) &&
+        after.estado in ['propuesto', 'confirmado', 'descartado'] &&
+        after.rol == before.rol &&
+        after.texto == before.texto &&
+        after.fecha == before.fecha;
     }
 
     // Niega todo lo demás por defecto hasta abrir cada colección en sus slices correspondientes.

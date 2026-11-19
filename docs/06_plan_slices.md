@@ -14,7 +14,7 @@ un desarrollador con apoyo de agentes; ajustar con la realidad.
 | 5 | Deudas externas | `prompts/slice-05-deudas.md` | [x] | 1 |
 | 6 | Deudas entre miembros | `prompts/slice-06-deudas-internas.md` | [x] | 1 |
 | 7 | Correcciones | `prompts/slice-07-correcciones.md` | [x] | 1,5 |
-| 8 | Chat Nivel 1 + puertas de IA | `prompts/slice-08-chat.md` | [ ] | 2 |
+| 8 | Chat Nivel 1 + puertas de IA | `prompts/slice-08-chat.md` | [x] | 2 |
 | 9 | Avisos, pulido y piloto | `prompts/slice-09-piloto.md` | [ ] | 2 |
 
 Total estimado: ~13 semanas.

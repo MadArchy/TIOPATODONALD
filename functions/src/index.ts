@@ -41,6 +41,11 @@ import {
   ResolverCorreccionResult,
   ejecutarResolverCorreccion,
 } from "./correcciones";
+import {
+  AsistenteInput,
+  AsistenteResult,
+  ejecutarAsistente,
+} from "./asistente";
 
 if (getApps().length === 0) {
   initializeApp();
@@ -224,6 +229,22 @@ export const resolverCorreccion = onCall(
     request: CallableRequest<ResolverCorreccionInput>
   ): Promise<ResolverCorreccionResult> => {
     return ejecutarResolverCorreccion(
+      getFirestore(),
+      request.auth?.uid,
+      request.data
+    );
+  }
+);
+
+/**
+ * Slice 8: puerta de IA — hoy responde "próximamente".
+ */
+export const asistente = onCall(
+  {region: REGION},
+  async (
+    request: CallableRequest<AsistenteInput>
+  ): Promise<AsistenteResult> => {
+    return ejecutarAsistente(
       getFirestore(),
       request.auth?.uid,
       request.data

@@ -13,6 +13,7 @@ import '../../features/hogar/presentation/escanear_qr_screen.dart';
 import '../../features/hogar/presentation/miembros_qr_screen.dart';
 import '../../features/hogar/presentation/sin_hogar_screen.dart';
 import '../../features/hogar/presentation/unirse_deeplink_screen.dart';
+import '../../features/chat/presentation/chat_screen.dart';
 import '../../features/correcciones/presentation/correcciones_admin_screen.dart';
 import '../../features/deudas/presentation/deudas_screen.dart';
 import '../../features/deudas_internas/presentation/detalle_deuda_interna_screen.dart';
@@ -93,6 +94,7 @@ String? evaluarRedireccionRouter({
     '/deudas',
     '/dashboard-admin',
     '/correcciones',
+    '/chat',
   };
   if (rutasConHogar.contains(ubicacionActual) ||
       ubicacionActual.startsWith('/movimiento/') ||
@@ -191,6 +193,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/correcciones',
         name: 'correcciones',
         builder: (context, state) => const CorreccionesAdminScreen(),
+      ),
+      GoRoute(
+        path: '/chat',
+        name: 'chat',
+        builder: (context, state) => const ChatScreen(),
       ),
       GoRoute(
         path: '/desglose-miembro/:uid',
