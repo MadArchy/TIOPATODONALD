@@ -100,6 +100,34 @@ class HogarController extends AsyncNotifier<void> {
     return !state.hasError;
   }
 
+  Future<bool> cambiarPresupuesto({
+    required String hogarId,
+    required int monto,
+  }) async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() async {
+      await ref.read(hogarRepositoryProvider).cambiarPresupuesto(
+            hogarId: hogarId,
+            monto: monto,
+          );
+    });
+    return !state.hasError;
+  }
+
+  Future<bool> guardarDiaInicioPendiente({
+    required String uid,
+    required int? diaInicioPendiente,
+  }) async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() async {
+      await ref.read(hogarRepositoryProvider).guardarDiaInicioPendiente(
+            uid: uid,
+            diaInicioPendiente: diaInicioPendiente,
+          );
+    });
+    return !state.hasError;
+  }
+
   void limpiarError() {
     if (state.hasError) {
       state = const AsyncData(null);

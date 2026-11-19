@@ -9,6 +9,7 @@ import 'package:app/data/models/hogar.dart';
 import 'package:app/data/models/invitacion_hogar.dart';
 import 'package:app/data/models/miembro_hogar.dart';
 import 'package:app/data/models/presupuesto.dart';
+import 'package:app/data/models/resumen_periodo.dart';
 import 'package:app/data/models/usuario.dart';
 import 'package:app/data/repositories/auth_repository.dart';
 import 'package:app/data/repositories/hogar_repository.dart';
@@ -200,6 +201,71 @@ class FakeHogarRepository implements HogarRepository {
       authRepo._usuarioInicial?.copyWith(diaInicioPeriodo: diaInicioPeriodo),
     );
   }
+
+  @override
+  Future<void> cambiarPresupuesto({
+    required String hogarId,
+    required int monto,
+  }) async {
+    final actual = ultimoPresupuestoGuardado;
+    if (actual == null) return;
+    ultimoPresupuestoGuardado = Presupuesto(
+      id: actual.id,
+      uid: actual.uid,
+      periodoId: actual.periodoId,
+      monto: monto,
+      alertasEnviadas: actual.alertasEnviadas,
+      actualizadoEn: DateTime(2026, 11, 18),
+    );
+    _presupuestoCtrl.add(ultimoPresupuestoGuardado);
+  }
+
+  @override
+  Future<void> guardarDiaInicioPendiente({
+    required String uid,
+    required int? diaInicioPendiente,
+  }) async {
+    authRepo.actualizarUsuario(
+      authRepo._usuarioInicial?.copyWith(
+        diaInicioPendiente: diaInicioPendiente,
+      ),
+    );
+  }
+
+  @override
+  Future<void> marcarAlertasEnviadas({
+    required String hogarId,
+    required String presupuestoId,
+    required List<int> alertasEnviadas,
+  }) async {
+    final actual = ultimoPresupuestoGuardado;
+    if (actual == null) return;
+    ultimoPresupuestoGuardado = Presupuesto(
+      id: actual.id,
+      uid: actual.uid,
+      periodoId: actual.periodoId,
+      monto: actual.monto,
+      alertasEnviadas: alertasEnviadas,
+      actualizadoEn: actual.actualizadoEn,
+    );
+    _presupuestoCtrl.add(ultimoPresupuestoGuardado);
+  }
+
+  @override
+  Stream<ResumenPeriodo?> observarResumen({
+    required String hogarId,
+    required String uid,
+    required String periodoId,
+  }) async* {
+    yield null;
+  }
+
+  @override
+  Stream<List<Presupuesto>> observarPresupuestosHogar(String hogarId) async* {
+    yield ultimoPresupuestoGuardado == null
+        ? const <Presupuesto>[]
+        : <Presupuesto>[ultimoPresupuestoGuardado!];
+  }
 }
 
 void main() {
@@ -316,9 +382,9 @@ void main() {
       expect(fakeHogar.ultimoPresupuestoGuardado?.monto, 3500000);
       expect(fakeHogar.ultimoPresupuestoGuardado?.periodoId, '2026-11-01');
 
-      // 3. Llega a Inicio y abre "Miembros y código QR"
+      // 3. Llega a Inicio y abre "Miembros y código QR" (AppBar, siempre visible)
       expect(find.text('Familia Pato'), findsWidgets);
-      await tester.tap(find.byKey(const Key('btn_abrir_miembros_qr')));
+      await tester.tap(find.byKey(const Key('btn_ir_a_miembros_desde_inicio')));
       await tester.pumpAndSettle();
 
       expect(find.text('Invitar a un familiar con código QR'), findsOneWidget);

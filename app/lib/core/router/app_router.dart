@@ -13,7 +13,9 @@ import '../../features/hogar/presentation/escanear_qr_screen.dart';
 import '../../features/hogar/presentation/miembros_qr_screen.dart';
 import '../../features/hogar/presentation/sin_hogar_screen.dart';
 import '../../features/hogar/presentation/unirse_deeplink_screen.dart';
-import '../../features/home/presentation/inicio_provisional_screen.dart';
+import '../../features/home/presentation/dashboard_admin_screen.dart';
+import '../../features/home/presentation/desglose_miembro_screen.dart';
+import '../../features/home/presentation/inicio_screen.dart';
 import '../../features/movimientos/presentation/detalle_movimiento_screen.dart';
 import '../../features/movimientos/presentation/gastos_fijos_screen.dart';
 import '../../features/movimientos/presentation/historial_movimientos_screen.dart';
@@ -25,7 +27,7 @@ import '../../features/presupuesto/presentation/configurar_presupuesto_periodo_s
 /// - Con sesión, `hogarId != null` y sin presupuesto del período → `/configurar-periodo` (permitiendo `/miembros-qr`, `/perfil`)
 /// - Con sesión, `hogarId != null` y con presupuesto → `/inicio` (permitiendo
 ///   `/configurar-periodo`, `/miembros-qr`, `/unirse`, `/perfil`, `/historial`,
-///   `/movimiento/:id`, `/gastos-fijos`)
+///   `/movimiento/:id`, `/gastos-fijos`, `/dashboard-admin`, `/desglose-miembro/:uid`)
 String? evaluarRedireccionRouter({
   required String ubicacionActual,
   required String? uid,
@@ -84,9 +86,11 @@ String? evaluarRedireccionRouter({
     '/miembros-qr',
     '/historial',
     '/gastos-fijos',
+    '/dashboard-admin',
   };
   if (rutasConHogar.contains(ubicacionActual) ||
-      ubicacionActual.startsWith('/movimiento/')) {
+      ubicacionActual.startsWith('/movimiento/') ||
+      ubicacionActual.startsWith('/desglose-miembro/')) {
     return null;
   }
   return '/inicio';
@@ -169,7 +173,19 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/inicio',
         name: 'inicio',
-        builder: (context, state) => const InicioProvisionalScreen(),
+        builder: (context, state) => const InicioScreen(),
+      ),
+      GoRoute(
+        path: '/dashboard-admin',
+        name: 'dashboard-admin',
+        builder: (context, state) => const DashboardAdminScreen(),
+      ),
+      GoRoute(
+        path: '/desglose-miembro/:uid',
+        name: 'desglose-miembro',
+        builder: (context, state) => DesgloseMiembroScreen(
+          miembroUid: state.pathParameters['uid'] ?? '',
+        ),
       ),
       GoRoute(
         path: '/historial',

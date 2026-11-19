@@ -51,6 +51,29 @@ void main() {
         isNull,
       );
     });
+
+    test('permite /dashboard-admin y /desglose-miembro/:uid (slice 4)', () {
+      expect(
+        evaluarRedireccionRouter(
+          ubicacionActual: '/dashboard-admin',
+          uid: 'u1',
+          usuario: usuario,
+          cargandoEstado: false,
+          tienePresupuestoVigente: true,
+        ),
+        isNull,
+      );
+      expect(
+        evaluarRedireccionRouter(
+          ubicacionActual: '/desglose-miembro/u2',
+          uid: 'u1',
+          usuario: usuario,
+          cargandoEstado: false,
+          tienePresupuestoVigente: true,
+        ),
+        isNull,
+      );
+    });
   });
 
   group('NuevoMovimientoSheet smoke', () {

@@ -3,6 +3,7 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/config/firebase_init.dart';
+import '../../core/indicadores.dart' show periodoAnteriorDe;
 import '../../core/periodo.dart';
 import '../../core/utils/clock.dart';
 import '../../core/utils/conectividad.dart';
@@ -10,6 +11,7 @@ import '../models/hogar.dart';
 import '../models/invitacion_hogar.dart';
 import '../models/miembro_hogar.dart';
 import '../models/presupuesto.dart';
+import '../models/resumen_periodo.dart';
 import 'auth_repository.dart';
 
 class HogarException implements Exception {
@@ -51,6 +53,33 @@ abstract class HogarRepository {
     required int diaInicioPeriodo,
     required DateTime ahora,
   });
+
+  /// Cambia el monto del presupuesto vigente vía Function (auditoría `cambioPresupuesto`).
+  Future<void> cambiarPresupuesto({
+    required String hogarId,
+    required int monto,
+  });
+
+  /// Programa un nuevo día de inicio (`diaInicioPendiente`) o lo cancela (`null`).
+  Future<void> guardarDiaInicioPendiente({
+    required String uid,
+    required int? diaInicioPendiente,
+  });
+
+  /// Marca umbrales de alerta ya mostrados en el presupuesto del período.
+  Future<void> marcarAlertasEnviadas({
+    required String hogarId,
+    required String presupuestoId,
+    required List<int> alertasEnviadas,
+  });
+
+  Stream<ResumenPeriodo?> observarResumen({
+    required String hogarId,
+    required String uid,
+    required String periodoId,
+  });
+
+  Stream<List<Presupuesto>> observarPresupuestosHogar(String hogarId);
 }
 
 class FirebaseHogarRepository implements HogarRepository {
@@ -288,6 +317,86 @@ class FirebaseHogarRepository implements HogarRepository {
 
     await batch.commit();
   }
+
+  @override
+  Future<void> cambiarPresupuesto({
+    required String hogarId,
+    required int monto,
+  }) async {
+    if (monto <= 0) {
+      throw const HogarException('Escribe un presupuesto mayor a \$0.');
+    }
+    await _exigirInternet();
+    try {
+      final callable = _functions.httpsCallable('cambiarPresupuesto');
+      await callable.call<Map<Object?, Object?>>(<String, dynamic>{
+        'hogarId': hogarId,
+        'monto': monto,
+      });
+    } catch (e) {
+      throw _mapearError(e);
+    }
+  }
+
+  @override
+  Future<void> guardarDiaInicioPendiente({
+    required String uid,
+    required int? diaInicioPendiente,
+  }) async {
+    if (diaInicioPendiente != null &&
+        (diaInicioPendiente < 1 || diaInicioPendiente > 28)) {
+      throw const HogarException('Elige un día de inicio entre 1 y 28.');
+    }
+    await _firestore.collection('usuarios').doc(uid).update(<String, dynamic>{
+      'diaInicioPendiente': diaInicioPendiente,
+    });
+  }
+
+  @override
+  Future<void> marcarAlertasEnviadas({
+    required String hogarId,
+    required String presupuestoId,
+    required List<int> alertasEnviadas,
+  }) async {
+    await _firestore
+        .collection('hogares')
+        .doc(hogarId)
+        .collection('presupuestos')
+        .doc(presupuestoId)
+        .update(<String, dynamic>{
+      'alertasEnviadas': alertasEnviadas,
+      'actualizadoEn': FieldValue.serverTimestamp(),
+    });
+  }
+
+  @override
+  Stream<ResumenPeriodo?> observarResumen({
+    required String hogarId,
+    required String uid,
+    required String periodoId,
+  }) {
+    final docId = '${uid}_$periodoId';
+    return _firestore
+        .collection('hogares')
+        .doc(hogarId)
+        .collection('resumenes')
+        .doc(docId)
+        .snapshots()
+        .map((snap) {
+      if (!snap.exists) return null;
+      return ResumenPeriodo.fromFirestore(snap);
+    });
+  }
+
+  @override
+  Stream<List<Presupuesto>> observarPresupuestosHogar(String hogarId) {
+    return _firestore
+        .collection('hogares')
+        .doc(hogarId)
+        .collection('presupuestos')
+        .snapshots()
+        .map((snap) => snap.docs.map(Presupuesto.fromFirestore).toList());
+  }
 }
 
 final hogarRepositoryProvider = Provider<HogarRepository>((ref) {
@@ -338,5 +447,34 @@ final presupuestoVigenteProvider = StreamProvider<Presupuesto?>((ref) {
         hogarId: hogarId,
         uid: usuario.uid,
         periodoId: periodo.periodoId,
+      );
+});
+
+final presupuestosHogarProvider = StreamProvider<List<Presupuesto>>((ref) {
+  final usuario = ref.watch(usuarioActualProvider).value;
+  final hogarId = usuario?.hogarId;
+  if (hogarId == null || hogarId.isEmpty) {
+    return Stream<List<Presupuesto>>.value(const <Presupuesto>[]);
+  }
+  return ref.watch(hogarRepositoryProvider).observarPresupuestosHogar(hogarId);
+});
+
+/// Resumen del período anterior (para la tarjeta de cierre el día 1).
+final resumenPeriodoAnteriorProvider = StreamProvider<ResumenPeriodo?>((ref) {
+  final usuario = ref.watch(usuarioActualProvider).value;
+  final hogarId = usuario?.hogarId;
+  if (usuario == null || hogarId == null || hogarId.isEmpty) {
+    return Stream<ResumenPeriodo?>.value(null);
+  }
+  final ahora = ref.watch(clockProvider).now();
+  final actual = periodoDe(ahora, usuario.diaInicioPeriodo);
+  if (diasTranscurridos(actual, ahora) != 1) {
+    return Stream<ResumenPeriodo?>.value(null);
+  }
+  final anterior = periodoAnteriorDe(actual);
+  return ref.watch(hogarRepositoryProvider).observarResumen(
+        hogarId: hogarId,
+        uid: usuario.uid,
+        periodoId: anterior.periodoId,
       );
 });

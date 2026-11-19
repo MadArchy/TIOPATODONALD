@@ -2,6 +2,7 @@ import {getApps, initializeApp} from "firebase-admin/app";
 import {getFirestore} from "firebase-admin/firestore";
 import {onCall, onRequest, CallableRequest} from "firebase-functions/v2/https";
 import {onDocumentUpdated} from "firebase-functions/v2/firestore";
+import {onSchedule} from "firebase-functions/v2/scheduler";
 import {setGlobalOptions} from "firebase-functions/v2";
 import {
   CrearHogarInput,
@@ -18,6 +19,12 @@ import {
   UnirseConCodigoResult,
 } from "./hogar";
 import {manejarAlEditarMovimiento} from "./movimientos";
+import {
+  CambiarPresupuestoInput,
+  CambiarPresupuestoResult,
+  ejecutarCambiarPresupuesto,
+} from "./presupuesto";
+import {ejecutarCerrarPeriodos} from "./cerrar_periodos";
 
 if (getApps().length === 0) {
   initializeApp();
@@ -129,5 +136,36 @@ export const alEditarMovimiento = onDocumentUpdated(
   },
   async (event) => {
     await manejarAlEditarMovimiento(getFirestore(), event);
+  }
+);
+
+/**
+ * Slice 4: cambiar presupuesto del período vigente + auditoría.
+ */
+export const cambiarPresupuesto = onCall(
+  {region: REGION},
+  async (
+    request: CallableRequest<CambiarPresupuestoInput>
+  ): Promise<CambiarPresupuestoResult> => {
+    return ejecutarCambiarPresupuesto(
+      getFirestore(),
+      request.auth?.uid,
+      request.data
+    );
+  }
+);
+
+/**
+ * Slice 4: cierre diario de períodos (~00:30 America/Bogota).
+ * Genera `resumenes` y aplica `diaInicioPendiente`.
+ */
+export const cerrarPeriodos = onSchedule(
+  {
+    region: REGION,
+    schedule: "30 0 * * *",
+    timeZone: "America/Bogota",
+  },
+  async () => {
+    await ejecutarCerrarPeriodos(getFirestore());
   }
 );

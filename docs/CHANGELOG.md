@@ -2,6 +2,14 @@
 
 Una entrada por slice cerrado: fecha, slice, qué se hizo, decisiones tomadas.
 
+## 2026-11-18 — Slice 4: Home, presupuesto y dashboard admin
+- **Core (`app/lib/core/indicadores.dart`)**: funciones puras de gastado, ingresos, disponible, disponiblePorDia, proyección (truncada), semáforo, avisoPreventivo, porcentajeReducible, cuotasComprometidas/Pendientes, margenReal, alertasNuevas y `calcularIndicadoresPeriodo`. Tests con el ejemplo oficial de `docs/02_reglas_negocio.md` §2 y bordes (día 1/2/último, presupuesto 0, sin movimientos).
+- **Inicio**: semáforo con texto+ícono, “Te quedan \$X por día”, barra 50/80/100, aviso preventivo, ingresos/cuotas (hook 0 hasta deudas), desglose por categoría, gastos fijos, banner de alertas 50/80/100 con persistencia en `alertasEnviadas`, tarjeta “Cierre de tu período” el día 1 si hay `resumenes` del período anterior.
+- **Perfil**: cambiar presupuesto vía callable `cambiarPresupuesto` (auditoría `cambioPresupuesto`); día de inicio → `diaInicioPendiente` con texto “Aplica desde el …”.
+- **Admin**: `/dashboard-admin` (margen real + tarjeta por miembro en SU período) y `/desglose-miembro/:uid`. El período ajeno se infiere del `periodoId` de presupuestos (sin leer `usuarios` ajenos).
+- **Functions**: `cambiarPresupuesto` (callable) y `cerrarPeriodos` (cron 00:30 America/Bogota) que genera `resumenes/{uid}_{periodoId}` y aplica `diaInicioPendiente`.
+- **Gaps conscientes**: cuotas/deudas en 0 hasta Slice 5; push de alertas en Slice 9.
+
 ## 2026-11-18 — Preparación
 - Kit de arranque: AGENTS.md, reglas para Antigravity (`.agents/`) y Cursor (`.cursor/`), docs 01–08, prompts por slice.
 - Decisiones por defecto registradas en `docs/07_decisiones.md`.
