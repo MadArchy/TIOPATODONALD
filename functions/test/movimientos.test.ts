@@ -4,17 +4,17 @@ import {
 } from "../src/movimientos";
 
 describe("esEdicionMenor", () => {
-  it("true solo si cambian nota/categoria/editadoEn", () => {
+  it("true solo si cambian nota/categoria/editadoEn en gasto", () => {
     expect(
       esEdicionMenor(
-        {nota: "", categoria: "ocio", monto: 1000, uid: "u1"},
-        {nota: "x", categoria: "ocio", monto: 1000, uid: "u1"}
+        {nota: "", categoria: "ocio", monto: 1000, uid: "u1", tipo: "gasto"},
+        {nota: "x", categoria: "ocio", monto: 1000, uid: "u1", tipo: "gasto"}
       )
     ).toBe(true);
     expect(
       esEdicionMenor(
-        {nota: "", categoria: "ocio", monto: 1000},
-        {nota: "", categoria: "alimentacion", monto: 1000}
+        {nota: "", categoria: "ocio", monto: 1000, tipo: "gasto"},
+        {nota: "", categoria: "alimentacion", monto: 1000, tipo: "gasto"}
       )
     ).toBe(true);
   });
@@ -30,6 +30,15 @@ describe("esEdicionMenor", () => {
       esEdicionMenor(
         {fotoPath: null},
         {fotoPath: "recibos/h/m.jpg"}
+      )
+    ).toBe(false);
+  });
+
+  it("false si cambia categoria de ingreso (va por corrección)", () => {
+    expect(
+      esEdicionMenor(
+        {nota: "", categoria: "salario", monto: 1000, tipo: "ingreso"},
+        {nota: "", categoria: "otros_ingreso", monto: 1000, tipo: "ingreso"}
       )
     ).toBe(false);
   });

@@ -11,6 +11,7 @@ import '../../../core/utils/dinero.dart';
 import '../../../data/models/movimiento.dart';
 import '../../../data/models/resumen_periodo.dart';
 import '../../../data/repositories/auth_repository.dart';
+import '../../../data/repositories/correcciones_repository.dart';
 import '../../../data/repositories/hogar_repository.dart';
 import '../../../data/repositories/movimientos_repository.dart';
 import '../../movimientos/presentation/nuevo_movimiento_sheet.dart';
@@ -120,13 +121,30 @@ class _InicioScreenState extends ConsumerState<InicioScreen> {
       appBar: AppBar(
         title: Text(hogar?.nombre ?? 'Inicio'),
         actions: [
-          if (esAdmin)
+          if (esAdmin) ...[
+            Builder(
+              builder: (context) {
+                final nPendientes =
+                    ref.watch(correccionesPendientesProvider).value?.length ?? 0;
+                return IconButton(
+                  key: const Key('btn_ir_a_correcciones'),
+                  tooltip: 'Correcciones',
+                  onPressed: () => context.push('/correcciones'),
+                  icon: Badge(
+                    isLabelVisible: nPendientes > 0,
+                    label: Text('$nPendientes'),
+                    child: const Icon(Icons.rate_review_outlined),
+                  ),
+                );
+              },
+            ),
             IconButton(
               key: const Key('btn_ir_a_dashboard_admin'),
               tooltip: 'Ver a todos',
               onPressed: () => context.push('/dashboard-admin'),
               icon: const Icon(Icons.dashboard_outlined),
             ),
+          ],
           IconButton(
             key: const Key('btn_ir_a_miembros_desde_inicio'),
             tooltip: 'Miembros y QR',

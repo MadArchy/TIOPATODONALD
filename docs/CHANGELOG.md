@@ -2,6 +2,15 @@
 
 Una entrada por slice cerrado: fecha, slice, qué se hizo, decisiones tomadas.
 
+## 2026-11-19 — Slice 7: Correcciones y auditoría
+- **Core**: `correcciones.dart` — plazo (período del movimiento + 5 días), validación de cambios, ajuste de saldo por reclasificación gasto↔pagoCuota (ida y vuelta), acción de auditoría.
+- **Modelo/repo**: `Correccion` + `EntradaAuditoria` (freezed); `CorreccionesRepository` (pedir, observar pendientes/auditoría, callable `resolverCorreccion`).
+- **UI**: detalle con “Pedir corrección” e “Historial de cambios”; admin `/correcciones` con antes/después, Aprobar / Rechazar (requiere internet) y badge de pendientes en Inicio.
+- **Functions**: callable `resolverCorreccion` (solo admin; plazo; transacción; saldos; auditoría `correccion` / `anulacion` / `correccionAdminPropia`). `esEdicionMenor` ya no dispara en categoría de ingreso.
+- **Rules**: `correcciones` read miembro; create miembro `pendiente` + motivo; update/delete false.
+- **Índices**: `correcciones` por `estado+creadoEn` y `solicitanteUid+creadoEn`; `auditoria` por `movimientoId+fecha`.
+- **Gaps conscientes**: push de corrección pendiente/resuelta y aviso masivo si admin corrige lo suyo (Slice 9).
+
 ## 2026-11-18 — Slice 6: Deudas entre miembros
 - **Modelo/repo**: `DeudaInterna` + `PagoInterno` (freezed) y `DeudasInternasRepository` (crear cobro, aceptar/rechazar, registrar pago; confirmar vía callable).
 - **UI**: `/deudas` con pestañas Externas | Entre nosotros (Me deben / Debo); detalle `/deudas-internas/:id` (aceptar/rechazar, registrar pago, confirmar).

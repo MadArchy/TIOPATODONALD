@@ -85,6 +85,19 @@ void main() {
         isNull,
       );
     });
+
+    test('permite /correcciones (slice 7)', () {
+      expect(
+        evaluarRedireccionRouter(
+          ubicacionActual: '/correcciones',
+          uid: 'u1',
+          usuario: usuario,
+          cargandoEstado: false,
+          tienePresupuestoVigente: true,
+        ),
+        isNull,
+      );
+    });
   });
 
   group('NuevoMovimientoSheet smoke', () {

@@ -151,6 +151,16 @@ service cloud.firestore {
         }
       }
 
+      // Slice 7 — correcciones (update/delete solo Function)
+      match /correcciones/{correccionId} {
+        allow read: if esMiembroActivo(hogarId);
+
+        allow create: if esMiembroActivo(hogarId) &&
+          correccionCreateOk();
+
+        allow update, delete: if false;
+      }
+
       match /auditoria/{auditoriaId} {
         allow read: if esMiembroActivo(hogarId);
         allow write: if false;
@@ -365,6 +375,23 @@ service cloud.firestore {
         p.fecha <= request.time &&
         p.confirmado == false &&
         p.confirmadoEn == null;
+    }
+
+    function correccionCreateOk() {
+      let d = request.resource.data;
+      return d.solicitanteUid == request.auth.uid &&
+        d.movimientoId is string &&
+        d.movimientoId.size() > 0 &&
+        d.motivo is string &&
+        d.motivo.size() > 0 &&
+        d.motivo.size() <= 500 &&
+        d.cambios is map &&
+        d.cambios.keys().size() > 0 &&
+        d.estado == 'pendiente' &&
+        d.creadoEn == request.time &&
+        d.resueltaPor == null &&
+        d.resueltaEn == null &&
+        d.motivoRechazo == null;
     }
 
     // Niega todo lo demás por defecto hasta abrir cada colección en sus slices correspondientes.

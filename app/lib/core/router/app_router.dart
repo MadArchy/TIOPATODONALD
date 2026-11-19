@@ -13,6 +13,7 @@ import '../../features/hogar/presentation/escanear_qr_screen.dart';
 import '../../features/hogar/presentation/miembros_qr_screen.dart';
 import '../../features/hogar/presentation/sin_hogar_screen.dart';
 import '../../features/hogar/presentation/unirse_deeplink_screen.dart';
+import '../../features/correcciones/presentation/correcciones_admin_screen.dart';
 import '../../features/deudas/presentation/deudas_screen.dart';
 import '../../features/deudas_internas/presentation/detalle_deuda_interna_screen.dart';
 import '../../features/home/presentation/dashboard_admin_screen.dart';
@@ -30,7 +31,7 @@ import '../../features/presupuesto/presentation/configurar_presupuesto_periodo_s
 /// - Con sesión, `hogarId != null` y con presupuesto → `/inicio` (permitiendo
 ///   `/configurar-periodo`, `/miembros-qr`, `/unirse`, `/perfil`, `/historial`,
 ///   `/movimiento/:id`, `/gastos-fijos`, `/deudas`, `/deudas-internas/:id`,
-///   `/dashboard-admin`, `/desglose-miembro/:uid`)
+///   `/dashboard-admin`, `/desglose-miembro/:uid`, `/correcciones`)
 String? evaluarRedireccionRouter({
   required String ubicacionActual,
   required String? uid,
@@ -91,6 +92,7 @@ String? evaluarRedireccionRouter({
     '/gastos-fijos',
     '/deudas',
     '/dashboard-admin',
+    '/correcciones',
   };
   if (rutasConHogar.contains(ubicacionActual) ||
       ubicacionActual.startsWith('/movimiento/') ||
@@ -184,6 +186,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/dashboard-admin',
         name: 'dashboard-admin',
         builder: (context, state) => const DashboardAdminScreen(),
+      ),
+      GoRoute(
+        path: '/correcciones',
+        name: 'correcciones',
+        builder: (context, state) => const CorreccionesAdminScreen(),
       ),
       GoRoute(
         path: '/desglose-miembro/:uid',

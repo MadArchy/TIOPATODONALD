@@ -1,13 +1,18 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../core/categorias.dart';
+import '../../../core/correcciones.dart';
 import '../../../core/movimientos_validacion.dart';
 import '../../../core/utils/clock.dart';
 import '../../../core/utils/dinero.dart';
 import '../../../data/repositories/auth_repository.dart';
+import '../../../data/repositories/correcciones_repository.dart';
 import '../../../data/repositories/deudas_repository.dart';
+import '../../../data/repositories/hogar_repository.dart';
 import '../../../data/repositories/movimientos_repository.dart';
+import '../../correcciones/presentation/pedir_correccion_sheet.dart';
 
 /// Detalle de un movimiento; edición menor de nota/categoría si < 24 h.
 class DetalleMovimientoScreen extends ConsumerStatefulWidget {
@@ -209,6 +214,34 @@ class _DetalleMovimientoScreenState
                   label: const Text('Editar nota o categoría'),
                 ),
               ],
+              if (usuario != null &&
+                  mov.estado == 'activo' &&
+                  !_editando &&
+                  dentroDePlazoCorreccion(
+                    periodoIdMovimiento: mov.periodoId,
+                    // El día D del dueño está en el periodoId (YYYY-MM-DD).
+                    diaInicioDueno: int.tryParse(
+                          mov.periodoId.split('-').last,
+                        ) ??
+                        usuario.diaInicioPeriodo,
+                    ahora: ahora,
+                  )) ...[
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  key: const Key('btn_pedir_correccion'),
+                  onPressed: () =>
+                      mostrarPedirCorreccionSheet(context, movimiento: mov),
+                  icon: const Icon(Icons.rule_outlined),
+                  label: const Text('Pedir corrección'),
+                ),
+              ],
+              const SizedBox(height: 24),
+              Text(
+                'Historial de cambios',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 8),
+              _HistorialAuditoria(movimientoId: mov.id),
               if (_editando) ...[
                 const SizedBox(height: 16),
                 Text(
@@ -284,6 +317,101 @@ class _DetalleMovimientoScreenState
           );
         },
       ),
+    );
+  }
+}
+
+class _HistorialAuditoria extends ConsumerWidget {
+  const _HistorialAuditoria({required this.movimientoId});
+
+  final String movimientoId;
+
+  String _etiquetaAccion(String accion) {
+    switch (accion) {
+      case 'edicionMenor':
+        return 'Edición menor';
+      case 'anulacion':
+        return 'Anulación';
+      case 'correccionAdminPropia':
+        return 'Corrección del admin';
+      case 'correccion':
+        return 'Corrección';
+      default:
+        return accion;
+    }
+  }
+
+  String _resumenMapa(Map<String, dynamic> mapa) {
+    final partes = <String>[];
+    if (mapa.containsKey('monto')) {
+      final m = mapa['monto'];
+      final n = m is int ? m : (m as num?)?.toInt();
+      if (n != null) partes.add(formatCop(n));
+    }
+    if (mapa.containsKey('categoria')) {
+      final c = mapa['categoria'];
+      if (c is String) partes.add(etiquetaCategoria(c));
+      if (c == null) partes.add('sin categoría');
+    }
+    if (mapa['estado'] == 'anulado') partes.add('anulado');
+    if (mapa['tipo'] is String) partes.add(mapa['tipo'] as String);
+    if (mapa.containsKey('fecha')) {
+      final f = mapa['fecha'];
+      if (f is Timestamp) {
+        final d = f.toDate();
+        partes.add(
+          '${d.day.toString().padLeft(2, '0')}/'
+          '${d.month.toString().padLeft(2, '0')}/'
+          '${d.year}',
+        );
+      }
+    }
+    if (partes.isEmpty) return '—';
+    return partes.join(' · ');
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final async = ref.watch(auditoriaMovimientoProvider(movimientoId));
+    final miembros = ref.watch(miembrosHogarProvider).value ?? const [];
+    String nombreDe(String? uid) {
+      if (uid == null || uid.isEmpty) return '—';
+      for (final m in miembros) {
+        if (m.uid == uid) return m.nombre;
+      }
+      return 'Alguien';
+    }
+
+    return async.when(
+      loading: () => const Padding(
+        padding: EdgeInsets.symmetric(vertical: 8),
+        child: Center(child: CircularProgressIndicator()),
+      ),
+      error: (_, _) => const Text('No pudimos cargar el historial.'),
+      data: (lista) {
+        if (lista.isEmpty) {
+          return Text(
+            'Sin cambios registrados todavía.',
+            style: Theme.of(context).textTheme.bodySmall,
+          );
+        }
+        return Column(
+          children: lista.map((e) {
+            return ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.history),
+              title: Text(_etiquetaAccion(e.accion)),
+              subtitle: Text(
+                'Antes: ${_resumenMapa(e.antes)}\n'
+                'Después: ${_resumenMapa(e.despues)}\n'
+                'Pidió: ${nombreDe(e.porUid)}'
+                '${e.aprobadoPor != null ? ' · Aprobó: ${nombreDe(e.aprobadoPor)}' : ''}',
+              ),
+              isThreeLine: true,
+            );
+          }).toList(),
+        );
+      },
     );
   }
 }

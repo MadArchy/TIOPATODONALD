@@ -36,6 +36,11 @@ import {
   ConfirmarPagoInternoResult,
   ejecutarConfirmarPagoInterno,
 } from "./deudas_internas";
+import {
+  ResolverCorreccionInput,
+  ResolverCorreccionResult,
+  ejecutarResolverCorreccion,
+} from "./correcciones";
 
 if (getApps().length === 0) {
   initializeApp();
@@ -203,6 +208,22 @@ export const confirmarPagoInterno = onCall(
     request: CallableRequest<ConfirmarPagoInternoInput>
   ): Promise<ConfirmarPagoInternoResult> => {
     return ejecutarConfirmarPagoInterno(
+      getFirestore(),
+      request.auth?.uid,
+      request.data
+    );
+  }
+);
+
+/**
+ * Slice 7: admin aprueba/rechaza corrección → aplica cambios, saldos y auditoría.
+ */
+export const resolverCorreccion = onCall(
+  {region: REGION},
+  async (
+    request: CallableRequest<ResolverCorreccionInput>
+  ): Promise<ResolverCorreccionResult> => {
+    return ejecutarResolverCorreccion(
       getFirestore(),
       request.auth?.uid,
       request.data

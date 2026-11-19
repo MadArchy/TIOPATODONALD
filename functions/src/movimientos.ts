@@ -72,7 +72,13 @@ export function esEdicionMenor(
     }
   }
   if (cambiados.length === 0) return false;
-  return cambiados.every((k) => CAMPOS_EDICION_MENOR.has(k));
+  if (!cambiados.every((k) => CAMPOS_EDICION_MENOR.has(k))) return false;
+  // Edición menor de categoría solo aplica a gastos (correcciones de ingreso
+  // pasan por resolverCorreccion y no deben generar auditoría edicionMenor).
+  if (cambiados.includes("categoria") && before.tipo !== "gasto") {
+    return false;
+  }
+  return true;
 }
 
 /**
