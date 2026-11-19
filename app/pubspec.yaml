@@ -46,6 +46,9 @@ dependencies:
   freezed_annotation: ^3.1.0
   json_annotation: ^4.12.0
   intl: ^0.20.3
+  mobile_scanner: ^7.5.0
+  qr_flutter: ^4.1.0
+  connectivity_plus: ^7.3.2
 
 dev_dependencies:
   flutter_test:

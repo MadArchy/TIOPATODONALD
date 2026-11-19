@@ -31,3 +31,18 @@ Una entrada por slice cerrado: fecha, slice, qué se hizo, decisiones tomadas.
 - **Security Rules (`firestore.rules`)**:
   - Reglas de `usuarios/{uid}`: solo el propio `uid` lee y escribe; `create` exige `hogarId == null` y `diaInicioPeriodo` ∈ [1, 28]; `update` prohíbe modificar `hogarId` y `creadoEn`; `delete: if false`.
   - Tests con emulador en `functions/test/rules/usuarios.rules.test.ts`.
+
+## 2026-11-18 — Slice 2: Hogar e invitación por QR
+- **Lógica pura de períodos (`app/lib/core/periodo.dart`)**:
+  - `Periodo periodoDe(DateTime instante, int diaInicio)`, `diasTranscurridos` y `diasRestantes` en zona horaria `America/Bogota` (UTC-5).
+  - Tests unitarios en `app/test/core/periodo_test.dart` (D = 1, 15, 28, cruce de año, febrero bisiesto, medianoche en Bogotá y ejemplo oficial de `docs/02_reglas_negocio.md`).
+- **Cloud Functions v2 (`functions/src/hogar.ts` e `index.ts`)**:
+  - `crearHogar`, `generarInvitacion` (+4 h, invalida la anterior), `unirseConCodigo` y `sacarMiembro` con validaciones y transacciones.
+  - Tests con emulador y reloj simulado en `functions/test/rules/hogar.rules.test.ts`.
+- **Security Rules (`firestore.rules`)**:
+  - Lectura de `hogares/{h}/**` restringida a miembros activos (`esMiembroActivo(hogarId)`); `invitaciones` solo admin; `presupuestos/{uid}_{periodoId}` escritura por su propio dueño con `monto` entero > 0; revocación inmediata al pasar un miembro a `estado: 'retirado'`.
+- **App Flutter (`app/`)**:
+  - Modelos `Hogar`, `MiembroHogar`, `InvitacionHogar`, `Presupuesto` (`freezed` + `json_serializable`).
+  - Deep link `patodonald://unirse?h=..&c=..` en `AndroidManifest.xml`, `parseInvitacionQr` y `UnirseDeepLinkScreen`.
+  - Pantallas: `SinHogarScreen` (Crear hogar / Escanear QR), `EscanearQrScreen` (`mobile_scanner`), `ConfigurarPresupuestoPeriodoScreen` ("Tu presupuesto y tu período") y `MiembrosQrScreen` (`qr_flutter` con cuenta regresiva de 4 h, "Generar nuevo" y "Sacar" con confirmación).
+  - Validación de conectividad que muestra `"Necesitas internet para esto"` cuando no hay red.

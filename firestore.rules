@@ -28,11 +28,6 @@ service cloud.firestore {
     }
 
     // Slice 1: Colección usuarios/{uid}
-    // docs/03_modelo_datos.md y docs/04_seguridad_y_functions.md:
-    // - read: el propio uid
-    // - create: el propio uid (sin hogarId, es decir hogarId == null o no presente)
-    // - update: el propio uid, sin tocar hogarId
-    // - delete: no
     match /usuarios/{uid} {
       allow read: if esElPropioUsuario(uid);
 
@@ -52,6 +47,56 @@ service cloud.firestore {
         diaInicioValido(request.resource.data.diaInicioPeriodo);
 
       allow delete: if false;
+    }
+
+    // Slice 2: Colección hogares/{hogarId} y subcolecciones de Hogar / QR / Presupuestos
+    // docs/04_seguridad_y_functions.md:
+    // - hogares/{h}: read miembro activo; create/update/delete no (Function)
+    // - miembros, auditoria, resumenes, usoIA: read miembro activo; write no (Function)
+    // - invitaciones: read solo admin miembro activo; write no (Function)
+    // - presupuestos/{uid}_{p}: read miembro activo; create/update ese uid con monto int > 0; delete no
+    match /hogares/{hogarId} {
+      allow read: if esMiembroActivo(hogarId);
+      allow write: if false;
+
+      match /miembros/{miembroUid} {
+        allow read: if esMiembroActivo(hogarId);
+        allow write: if false;
+      }
+
+      match /invitaciones/{invitacionId} {
+        allow read: if esMiembroActivo(hogarId) && esAdmin(hogarId);
+        allow write: if false;
+      }
+
+      match /presupuestos/{presupuestoId} {
+        allow read: if esMiembroActivo(hogarId);
+
+        allow create, update: if esMiembroActivo(hogarId) &&
+          request.resource.data.uid == request.auth.uid &&
+          request.resource.data.periodoId is string &&
+          request.resource.data.periodoId.size() == 10 &&
+          presupuestoId == (request.auth.uid + '_' + request.resource.data.periodoId) &&
+          request.resource.data.monto is int &&
+          request.resource.data.monto > 0;
+
+        allow delete: if false;
+      }
+
+      match /auditoria/{auditoriaId} {
+        allow read: if esMiembroActivo(hogarId);
+        allow write: if false;
+      }
+
+      match /resumenes/{resumenId} {
+        allow read: if esMiembroActivo(hogarId);
+        allow write: if false;
+      }
+
+      match /usoIA/{usoId} {
+        allow read: if esMiembroActivo(hogarId);
+        allow write: if false;
+      }
     }
 
     // Niega todo lo demás por defecto hasta abrir cada colección en sus slices correspondientes.

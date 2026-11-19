@@ -1,9 +1,24 @@
-import * as admin from "firebase-admin";
-import {onCall, onRequest} from "firebase-functions/v2/https";
+import {getApps, initializeApp} from "firebase-admin/app";
+import {getFirestore} from "firebase-admin/firestore";
+import {onCall, onRequest, CallableRequest} from "firebase-functions/v2/https";
 import {setGlobalOptions} from "firebase-functions/v2";
+import {
+  CrearHogarInput,
+  CrearHogarResult,
+  ejecutarCrearHogar,
+  ejecutarGenerarInvitacion,
+  ejecutarSacarMiembro,
+  ejecutarUnirseConCodigo,
+  GenerarInvitacionInput,
+  GenerarInvitacionResult,
+  SacarMiembroInput,
+  SacarMiembroResult,
+  UnirseConCodigoInput,
+  UnirseConCodigoResult,
+} from "./hogar";
 
-if (admin.apps.length === 0) {
-  admin.initializeApp();
+if (getApps().length === 0) {
+  initializeApp();
 }
 
 // Región única para todas las Cloud Functions (AGENTS.md / .agents/rules/firebase.md)
@@ -46,5 +61,58 @@ export const pingHttp = onRequest(
   {region: REGION},
   (_req, res) => {
     res.status(200).json(construirRespuestaPing());
+  }
+);
+
+/**
+ * Slice 2: Callables de Hogar y QR (docs/04_seguridad_y_functions.md)
+ */
+export const crearHogar = onCall(
+  {region: REGION},
+  async (request: CallableRequest<CrearHogarInput>): Promise<CrearHogarResult> => {
+    return ejecutarCrearHogar(
+      getFirestore(),
+      request.auth?.uid,
+      request.data
+    );
+  }
+);
+
+export const generarInvitacion = onCall(
+  {region: REGION},
+  async (
+    request: CallableRequest<GenerarInvitacionInput>
+  ): Promise<GenerarInvitacionResult> => {
+    return ejecutarGenerarInvitacion(
+      getFirestore(),
+      request.auth?.uid,
+      request.data
+    );
+  }
+);
+
+export const unirseConCodigo = onCall(
+  {region: REGION},
+  async (
+    request: CallableRequest<UnirseConCodigoInput>
+  ): Promise<UnirseConCodigoResult> => {
+    return ejecutarUnirseConCodigo(
+      getFirestore(),
+      request.auth?.uid,
+      request.data
+    );
+  }
+);
+
+export const sacarMiembro = onCall(
+  {region: REGION},
+  async (
+    request: CallableRequest<SacarMiembroInput>
+  ): Promise<SacarMiembroResult> => {
+    return ejecutarSacarMiembro(
+      getFirestore(),
+      request.auth?.uid,
+      request.data
+    );
   }
 );
