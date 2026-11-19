@@ -1,0 +1,15 @@
+# Flutter
+app/build/
+app/.dart_tool/
+app/.flutter-plugins*
+app/android/key.properties
+*.jks
+# Firebase / Node
+functions/node_modules/
+functions/lib/
+.firebase/
+firebase-debug.log*
+*.env
+.runtimeconfig.json
+# Config con claves de proyecto (se generan con flutterfire configure)
+app/android/app/google-services.json
