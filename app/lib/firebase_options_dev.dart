@@ -9,9 +9,8 @@ import 'package:flutter/foundation.dart'
 class DefaultFirebaseOptionsDev {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
-      throw UnsupportedError(
-        'DefaultFirebaseOptionsDev no está configurado para web.',
-      );
+      // Vista local en Chrome (preview). El MVP sigue siendo Android.
+      return web;
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
@@ -29,5 +28,14 @@ class DefaultFirebaseOptionsDev {
     messagingSenderId: '000000000000',
     projectId: 'pato-donald-dev',
     storageBucket: 'pato-donald-dev.firebasestorage.app',
+  );
+
+  static const FirebaseOptions web = FirebaseOptions(
+    apiKey: 'demo-api-key-pato-donald-dev',
+    appId: '1:000000000000:web:0000000000000000000000',
+    messagingSenderId: '000000000000',
+    projectId: 'pato-donald-dev',
+    storageBucket: 'pato-donald-dev.firebasestorage.app',
+    authDomain: 'pato-donald-dev.firebaseapp.com',
   );
 }

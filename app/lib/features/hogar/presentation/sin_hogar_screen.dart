@@ -1,0 +1,69 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:material_ui/material_ui.dart';
+
+import '../../../data/repositories/auth_repository.dart';
+
+/// Pantalla provisional para el estado "Con sesión y hogarId == null" (Slice 1).
+/// En el Slice 2 se completará con Crear hogar y Escanear código QR.
+class SinHogarScreen extends ConsumerWidget {
+  const SinHogarScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final usuario = ref.watch(usuarioActualProvider).value;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Tu hogar'),
+        actions: [
+          IconButton(
+            key: const Key('btn_ir_a_perfil_desde_sin_hogar'),
+            tooltip: 'Mi perfil',
+            onPressed: () => context.push('/perfil'),
+            icon: const Icon(Icons.account_circle_outlined),
+          ),
+        ],
+      ),
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.home_work_outlined,
+                  size: 72,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  usuario != null
+                      ? 'Hola, ${usuario.nombre}'
+                      : 'Crea o únete a un hogar',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Crea o únete a un hogar',
+                  style: Theme.of(context).textTheme.titleMedium,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Aún no perteneces a un hogar. En el siguiente paso podrás crear uno nuevo o escanear el código QR de tu familia.',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

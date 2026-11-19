@@ -7,7 +7,7 @@ un desarrollador con apoyo de agentes; ajustar con la realidad.
 | # | Slice | Prompt | Estado | Semanas (estim.) |
 | --- | --- | --- | --- | --- |
 | 0 | Base del proyecto | `prompts/slice-00-base.md` | [x] | 0,5 |
-| 1 | Auth | `prompts/slice-01-auth.md` | [ ] | 0,5 |
+| 1 | Auth | `prompts/slice-01-auth.md` | [x] | 0,5 |
 | 2 | Hogar / QR | `prompts/slice-02-hogar-qr.md` | [ ] | 1 |
 | 3 | Movimientos | `prompts/slice-03-movimientos.md` | [ ] | 1,5 |
 | 4 | Home y presupuesto | `prompts/slice-04-home.md` | [ ] | 2 |

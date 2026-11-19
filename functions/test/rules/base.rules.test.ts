@@ -34,12 +34,8 @@ describe("Firestore Security Rules — Slice 0 (niega todo)", () => {
     );
   });
 
-  it("niega lectura y escritura incluso a usuarios autenticados en Slice 0", async () => {
+  it("niega lectura y escritura a colecciones aún cerradas incluso a usuarios autenticados", async () => {
     const authedDb = testEnv.authenticatedContext("u1").firestore();
-    await assertFails(getDoc(doc(authedDb, "usuarios/u1")));
-    await assertFails(
-      setDoc(doc(authedDb, "usuarios/u1"), {nombre: "Donald"})
-    );
     await assertFails(getDoc(doc(authedDb, "hogares/h1")));
     await assertFails(
       setDoc(doc(authedDb, "hogares/h1/movimientos/m1"), {monto: 10000})

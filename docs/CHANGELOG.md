@@ -19,3 +19,15 @@ Una entrada por slice cerrado: fecha, slice, qué se hizo, decisiones tomadas.
   - `functions/src/index.ts` en TypeScript (v2) con función `ping` (`onCall`) y `pingHttp` (`onRequest`), ESLint y Jest.
   - `firestore.rules` y `storage.rules` que niegan todo por defecto, con tests de `@firebase/rules-unit-testing` contra el emulador.
   - `firestore.indexes.json` vacío y `.github/workflows/ci.yml` configurado.
+
+## 2026-11-18 — Slice 1: Auth
+- **Modelo y repositorio (`app/lib/data/`)**:
+  - Modelo `Usuario` (`freezed` + `json_serializable`) con todos los campos de `docs/03_modelo_datos.md` (`uid`, `nombre`, `email`, `hogarId`, `diaInicioPeriodo`, `diaInicioPendiente`, `horaRecordatorio`, `fcmTokens`, `creadoEn`).
+  - `AuthRepository` / `FirebaseAuthRepository` que al registrarse crea `usuarios/{uid}` con `diaInicioPeriodo: 1` y `hogarId: null`.
+  - Validadores y traducción de errores de Firebase Auth a español de Colombia en `app/lib/core/errors/auth_failures.dart`.
+- **Pantallas y navegación (`app/lib/features/auth/` y `app_router.dart`)**:
+  - Pantallas: `BienvenidaScreen`, `RegistroScreen`, `LoginScreen`, `RecuperarPasswordScreen`, `PerfilProvisionalScreen`, `SinHogarScreen` ("Crea o únete a un hogar") e `InicioProvisionalScreen`.
+  - Guardas reactivas en `go_router`: sin sesión → `/bienvenida`; con sesión y `hogarId == null` → `/sin-hogar`; con sesión y `hogarId != null` → `/inicio`.
+- **Security Rules (`firestore.rules`)**:
+  - Reglas de `usuarios/{uid}`: solo el propio `uid` lee y escribe; `create` exige `hogarId == null` y `diaInicioPeriodo` ∈ [1, 28]; `update` prohíbe modificar `hogarId` y `creadoEn`; `delete: if false`.
+  - Tests con emulador en `functions/test/rules/usuarios.rules.test.ts`.

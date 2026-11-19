@@ -7,6 +7,10 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function esElPropioUsuario(uid) {
+      return estaAutenticado() && request.auth.uid == uid;
+    }
+
     function esMiembroActivo(hogarId) {
       return estaAutenticado() &&
         exists(/databases/$(database)/documents/hogares/$(hogarId)/miembros/$(request.auth.uid)) &&
@@ -19,7 +23,38 @@ service cloud.firestore {
         get(/databases/$(database)/documents/hogares/$(hogarId)).data.adminUid == request.auth.uid;
     }
 
-    // Slice 0: Niega todo por defecto hasta abrir cada colección en sus slices correspondientes.
+    function diaInicioValido(dia) {
+      return dia is int && dia >= 1 && dia <= 28;
+    }
+
+    // Slice 1: Colección usuarios/{uid}
+    // docs/03_modelo_datos.md y docs/04_seguridad_y_functions.md:
+    // - read: el propio uid
+    // - create: el propio uid (sin hogarId, es decir hogarId == null o no presente)
+    // - update: el propio uid, sin tocar hogarId
+    // - delete: no
+    match /usuarios/{uid} {
+      allow read: if esElPropioUsuario(uid);
+
+      allow create: if esElPropioUsuario(uid) &&
+        request.resource.data.nombre is string &&
+        request.resource.data.nombre.size() > 0 &&
+        request.resource.data.email is string &&
+        request.resource.data.email.size() > 0 &&
+        diaInicioValido(request.resource.data.diaInicioPeriodo) &&
+        (!('hogarId' in request.resource.data) || request.resource.data.hogarId == null);
+
+      allow update: if esElPropioUsuario(uid) &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['hogarId', 'creadoEn']) &&
+        request.resource.data.nombre is string &&
+        request.resource.data.nombre.size() > 0 &&
+        request.resource.data.email is string &&
+        diaInicioValido(request.resource.data.diaInicioPeriodo);
+
+      allow delete: if false;
+    }
+
+    // Niega todo lo demás por defecto hasta abrir cada colección en sus slices correspondientes.
     match /{document=**} {
       allow read, write: if false;
     }

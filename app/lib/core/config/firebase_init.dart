@@ -19,12 +19,22 @@ const bool kUseEmulators = bool.fromEnvironment(
 );
 
 /// Host de los emuladores.
-/// - Para teléfono Android físico conectado por USB con `adb reverse`: `127.0.0.1`
-/// - Para emulador Android (AVD): `10.0.2.2`
-const String kEmulatorHost = String.fromEnvironment(
+/// - Chrome / web / teléfono con `adb reverse`: `127.0.0.1`
+/// - Emulador Android (AVD): `10.0.2.2`
+const String _kEmulatorHostDefine = String.fromEnvironment(
   'EMULATOR_HOST',
-  defaultValue: '10.0.2.2',
+  defaultValue: '',
 );
+
+String get kEmulatorHost {
+  if (_kEmulatorHostDefine.isNotEmpty) {
+    return _kEmulatorHostDefine;
+  }
+  if (kIsWeb) {
+    return '127.0.0.1';
+  }
+  return '10.0.2.2';
+}
 
 /// Inicializa Firebase para el [flavor] indicado, activa la persistencia offline
 /// de Firestore y, si estamos en `dev` con `USE_EMULATORS=true`, apunta Auth,
@@ -52,9 +62,12 @@ Future<void> inicializarFirebase(AppFlavor flavor) async {
         .useFunctionsEmulator(kEmulatorHost, 5001);
   }
 
-  // Persistencia offline activada siempre (AGENTS.md y docs/02_reglas_negocio.md §10)
-  firestore.settings = const Settings(
-    persistenceEnabled: true,
-    cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
-  );
+  // Persistencia offline (AGENTS.md y docs/02_reglas_negocio.md §10).
+  // En web el preview local no fuerza cache ilimitado (API distinta).
+  if (!kIsWeb) {
+    firestore.settings = const Settings(
+      persistenceEnabled: true,
+      cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
+    );
+  }
 }

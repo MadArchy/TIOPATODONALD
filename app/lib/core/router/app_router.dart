@@ -1,108 +1,117 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:material_ui/material_ui.dart';
 
-import '../config/app_flavor.dart';
-import '../config/firebase_init.dart';
-import '../theme/app_theme.dart';
-import '../utils/dinero.dart';
+import '../../data/models/usuario.dart';
+import '../../data/repositories/auth_repository.dart';
+import '../../features/auth/presentation/bienvenida_screen.dart';
+import '../../features/auth/presentation/login_screen.dart';
+import '../../features/auth/presentation/perfil_provisional_screen.dart';
+import '../../features/auth/presentation/recuperar_password_screen.dart';
+import '../../features/auth/presentation/registro_screen.dart';
+import '../../features/hogar/presentation/sin_hogar_screen.dart';
+import '../../features/home/presentation/inicio_provisional_screen.dart';
+
+/// Función pura que evalúa la guarda de navegación del Slice 1:
+/// - Sin sesión (`uid == null`) → `/bienvenida` (permitiendo `/login`, `/registro`, `/recuperar-password`)
+/// - Con sesión y `hogarId == null` → `/sin-hogar` (permitiendo `/perfil`)
+/// - Con sesión y `hogarId != null` → `/inicio` (permitiendo `/perfil`)
+String? evaluarRedireccionRouter({
+  required String ubicacionActual,
+  required String? uid,
+  required Usuario? usuario,
+  required bool cargandoEstado,
+}) {
+  if (cargandoEstado) {
+    return null;
+  }
+
+  const rutasPublicas = <String>{
+    '/bienvenida',
+    '/login',
+    '/registro',
+    '/recuperar-password',
+  };
+
+  if (uid == null) {
+    if (rutasPublicas.contains(ubicacionActual)) {
+      return null;
+    }
+    return '/bienvenida';
+  }
+
+  // Usuario con sesión activa:
+  if (ubicacionActual == '/perfil') {
+    return null;
+  }
+
+  final tieneHogar =
+      usuario?.hogarId != null && usuario!.hogarId!.trim().isNotEmpty;
+
+  if (!tieneHogar) {
+    if (ubicacionActual == '/sin-hogar') {
+      return null;
+    }
+    return '/sin-hogar';
+  }
+
+  if (ubicacionActual == '/inicio') {
+    return null;
+  }
+  return '/inicio';
+}
 
 final appRouterProvider = Provider<GoRouter>((ref) {
+  final uidAsync = ref.watch(authUidProvider);
+  final usuarioAsync = ref.watch(usuarioActualProvider);
+
   return GoRouter(
-    initialLocation: '/',
+    initialLocation: '/bienvenida',
+    redirect: (context, state) {
+      final cargando = uidAsync.isLoading ||
+          (uidAsync.value != null && usuarioAsync.isLoading);
+      return evaluarRedireccionRouter(
+        ubicacionActual: state.matchedLocation,
+        uid: uidAsync.value,
+        usuario: usuarioAsync.value,
+        cargandoEstado: cargando,
+      );
+    },
     routes: [
       GoRoute(
-        path: '/',
+        path: '/bienvenida',
+        name: 'bienvenida',
+        builder: (context, state) => const BienvenidaScreen(),
+      ),
+      GoRoute(
+        path: '/registro',
+        name: 'registro',
+        builder: (context, state) => const RegistroScreen(),
+      ),
+      GoRoute(
+        path: '/login',
+        name: 'login',
+        builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: '/recuperar-password',
+        name: 'recuperar-password',
+        builder: (context, state) => const RecuperarPasswordScreen(),
+      ),
+      GoRoute(
+        path: '/sin-hogar',
+        name: 'sin-hogar',
+        builder: (context, state) => const SinHogarScreen(),
+      ),
+      GoRoute(
+        path: '/inicio',
         name: 'inicio',
-        builder: (context, state) => const HolaPatoDonaldScreen(),
+        builder: (context, state) => const InicioProvisionalScreen(),
+      ),
+      GoRoute(
+        path: '/perfil',
+        name: 'perfil',
+        builder: (context, state) => const PerfilProvisionalScreen(),
       ),
     ],
   );
 });
-
-/// Pantalla base del Slice 0 ("Hola, PATO DONALD").
-class HolaPatoDonaldScreen extends ConsumerWidget {
-  const HolaPatoDonaldScreen({super.key});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final flavor = ref.watch(appFlavorProvider);
-    final semaforo =
-        Theme.of(context).extension<SemaforoColors>() ?? SemaforoColors.light;
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('PATO DONALD'),
-      ),
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.account_balance_wallet_rounded,
-                  size: 64,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Hola, PATO DONALD',
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Finanzas claras para nuestro hogar',
-                  style: Theme.of(context).textTheme.bodyLarge,
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 24),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    color: semaforo.verdeFondo,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: semaforo.verde, width: 1.5),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.check_circle_rounded,
-                        color: semaforo.verde,
-                      ),
-                      const SizedBox(width: 8),
-                      Flexible(
-                        child: Text(
-                          'En verde · Ejemplo: ${formatCop(85000)}',
-                          style: TextStyle(
-                            color: semaforo.verde,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Ambiente: ${flavor.etiqueta} (${flavor.nombreProyectoFirebase})'
-                  '${kUseEmulators ? ' · Emuladores activos' : ''}',
-                  style: Theme.of(context).textTheme.bodySmall,
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
