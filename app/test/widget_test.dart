@@ -2,11 +2,14 @@ import 'dart:async';
 
 import 'package:app/app.dart';
 import 'package:app/core/errors/auth_failures.dart';
+import 'package:app/data/models/preferencias_avisos.dart';
 import 'package:app/data/models/usuario.dart';
 import 'package:app/data/repositories/auth_repository.dart';
+import 'package:app/features/onboarding/presentation/onboarding_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class FakeAuthRepository implements AuthRepository {
   final _uidController = StreamController<String?>.broadcast();
@@ -79,9 +82,39 @@ class FakeAuthRepository implements AuthRepository {
   Future<void> cerrarSesion() async {
     emitirUid(null);
   }
+
+  @override
+  Future<void> registrarFcmToken({
+    required String uid,
+    required String token,
+  }) async {}
+
+  @override
+  Future<void> quitarFcmToken({
+    required String uid,
+    required String token,
+  }) async {}
+
+  @override
+  Future<void> guardarHoraRecordatorio({
+    required String uid,
+    required String? horaRecordatorio,
+  }) async {}
+
+  @override
+  Future<void> guardarPreferenciasAvisos({
+    required String uid,
+    required PreferenciasAvisos preferencias,
+  }) async {}
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUp(() async {
+    SharedPreferences.setMockInitialValues({kOnboardingVistoKey: true});
+  });
+
   testWidgets(
       'Flujo completo: Bienvenida -> Registro -> Sin Hogar -> Perfil -> Cerrar sesión',
       (tester) async {
@@ -91,6 +124,7 @@ void main() {
       ProviderScope(
         overrides: [
           authRepositoryProvider.overrideWithValue(fakeRepo),
+          onboardingVistoProvider.overrideWith(_OnboardingVistoTrue.new),
         ],
         child: const PatoDonaldApp(),
       ),
@@ -138,4 +172,9 @@ void main() {
     // 6. Vuelve a Bienvenida
     expect(find.text('Crear mi cuenta'), findsOneWidget);
   });
+}
+
+class _OnboardingVistoTrue extends OnboardingVisto {
+  @override
+  Future<bool> build() async => true;
 }

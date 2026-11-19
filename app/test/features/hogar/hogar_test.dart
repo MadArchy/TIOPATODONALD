@@ -8,14 +8,17 @@ import 'package:app/core/utils/qr_invitacion.dart';
 import 'package:app/data/models/hogar.dart';
 import 'package:app/data/models/invitacion_hogar.dart';
 import 'package:app/data/models/miembro_hogar.dart';
+import 'package:app/data/models/preferencias_avisos.dart';
 import 'package:app/data/models/presupuesto.dart';
 import 'package:app/data/models/resumen_periodo.dart';
 import 'package:app/data/models/usuario.dart';
 import 'package:app/data/repositories/auth_repository.dart';
 import 'package:app/data/repositories/hogar_repository.dart';
+import 'package:app/features/onboarding/presentation/onboarding_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class FakeConectividadService implements ConectividadService {
   FakeConectividadService({this.conectado = true});
@@ -79,6 +82,30 @@ class FakeAuthRepoHogar implements AuthRepository {
     required String password,
   }) async =>
       _usuarioInicial!;
+
+  @override
+  Future<void> registrarFcmToken({
+    required String uid,
+    required String token,
+  }) async {}
+
+  @override
+  Future<void> quitarFcmToken({
+    required String uid,
+    required String token,
+  }) async {}
+
+  @override
+  Future<void> guardarHoraRecordatorio({
+    required String uid,
+    required String? horaRecordatorio,
+  }) async {}
+
+  @override
+  Future<void> guardarPreferenciasAvisos({
+    required String uid,
+    required PreferenciasAvisos preferencias,
+  }) async {}
 }
 
 class FakeHogarRepository implements HogarRepository {
@@ -291,6 +318,10 @@ void main() {
   });
 
   group('Flujos UI de Hogar, Presupuesto/Período y modo sin internet', () {
+    setUp(() {
+      SharedPreferences.setMockInitialValues({kOnboardingVistoKey: true});
+    });
+
     testWidgets(
         'Sin internet: muestra "Necesitas internet para esto" y no abre formulario',
         (tester) async {
@@ -312,6 +343,7 @@ void main() {
             authRepositoryProvider.overrideWithValue(fakeAuth),
             hogarRepositoryProvider.overrideWithValue(fakeHogar),
             conectividadServiceProvider.overrideWithValue(fakeConectividad),
+            onboardingVistoProvider.overrideWith(_OnboardingVistoTrue.new),
           ],
           child: const PatoDonaldApp(),
         ),
@@ -350,6 +382,7 @@ void main() {
             authRepositoryProvider.overrideWithValue(fakeAuth),
             hogarRepositoryProvider.overrideWithValue(fakeHogar),
             conectividadServiceProvider.overrideWithValue(fakeConectividad),
+            onboardingVistoProvider.overrideWith(_OnboardingVistoTrue.new),
           ],
           child: const PatoDonaldApp(),
         ),
@@ -396,4 +429,9 @@ void main() {
       expect(find.text('Generar nuevo'), findsOneWidget);
     });
   });
+}
+
+class _OnboardingVistoTrue extends OnboardingVisto {
+  @override
+  Future<bool> build() async => true;
 }

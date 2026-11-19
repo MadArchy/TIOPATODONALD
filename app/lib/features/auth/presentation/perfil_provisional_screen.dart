@@ -6,6 +6,7 @@ import '../../../core/periodo.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/clock.dart';
 import '../../../core/utils/dinero.dart';
+import '../../../data/models/preferencias_avisos.dart';
 import '../../../data/repositories/auth_repository.dart';
 import '../../../data/repositories/hogar_repository.dart';
 import '../../hogar/application/hogar_controller.dart';
@@ -84,6 +85,66 @@ class _PerfilProvisionalScreenState
           : 'Listo. El nuevo día aplica desde el próximo período.';
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
     }
+  }
+
+  Future<void> _guardarHoraRecordatorio(TimeOfDay? hora) async {
+    final usuario = ref.read(usuarioActualProvider).value;
+    if (usuario == null) return;
+    final valor = hora == null
+        ? null
+        : '${hora.hour.toString().padLeft(2, '0')}:'
+            '${hora.minute.toString().padLeft(2, '0')}';
+    try {
+      await ref.read(authRepositoryProvider).guardarHoraRecordatorio(
+            uid: usuario.uid,
+            horaRecordatorio: valor,
+          );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            valor == null
+                ? 'Recordatorio diario apagado.'
+                : 'Recordatorio diario a las $valor.',
+          ),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No pudimos guardar la hora.')),
+      );
+    }
+  }
+
+  Future<void> _guardarPreferencia(
+    PreferenciasAvisos Function(PreferenciasAvisos) actualizar,
+  ) async {
+    final usuario = ref.read(usuarioActualProvider).value;
+    if (usuario == null) return;
+    final nuevas = actualizar(usuario.preferenciasAvisos);
+    try {
+      await ref.read(authRepositoryProvider).guardarPreferenciasAvisos(
+            uid: usuario.uid,
+            preferencias: nuevas,
+          );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No pudimos guardar el aviso.')),
+      );
+    }
+  }
+
+  TimeOfDay? _parseHora(String? hhmm) {
+    if (hhmm == null || !RegExp(r'^\d{2}:\d{2}$').hasMatch(hhmm)) {
+      return null;
+    }
+    final partes = hhmm.split(':');
+    return TimeOfDay(
+      hour: int.parse(partes[0]),
+      minute: int.parse(partes[1]),
+    );
   }
 
   @override
@@ -280,6 +341,108 @@ class _PerfilProvisionalScreenState
                   subtitle: const Text('Créditos, tarjetas y cuotas'),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => context.push('/deudas'),
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  'Avisos',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Elige a qué hora te recordamos y qué avisos quieres recibir.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(height: 8),
+                ListTile(
+                  key: const Key('btn_hora_recordatorio'),
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.schedule_rounded),
+                  title: const Text('Recordatorio diario'),
+                  subtitle: Text(
+                    usuario.horaRecordatorio == null
+                        ? 'Apagado'
+                        : 'A las ${usuario.horaRecordatorio}',
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: cargando
+                      ? null
+                      : () async {
+                          final actual =
+                              _parseHora(usuario.horaRecordatorio) ??
+                                  const TimeOfDay(hour: 20, minute: 0);
+                          final elegida = await showTimePicker(
+                            context: context,
+                            initialTime: actual,
+                          );
+                          if (elegida != null) {
+                            await _guardarHoraRecordatorio(elegida);
+                          }
+                        },
+                ),
+                if (usuario.horaRecordatorio != null)
+                  TextButton(
+                    key: const Key('btn_apagar_recordatorio'),
+                    onPressed: cargando
+                        ? null
+                        : () => _guardarHoraRecordatorio(null),
+                    child: const Text('Apagar recordatorio diario'),
+                  ),
+                SwitchListTile(
+                  key: const Key('switch_aviso_presupuesto'),
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Alertas 50 / 80 / 100%'),
+                  value: usuario.preferenciasAvisos.alertasPresupuesto,
+                  onChanged: cargando
+                      ? null
+                      : (v) => _guardarPreferencia(
+                            (p) => p.copyWith(alertasPresupuesto: v),
+                          ),
+                ),
+                SwitchListTile(
+                  key: const Key('switch_aviso_recordatorio'),
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Recordatorio diario (push)'),
+                  value: usuario.preferenciasAvisos.recordatorioDiario,
+                  onChanged: cargando
+                      ? null
+                      : (v) => _guardarPreferencia(
+                            (p) => p.copyWith(recordatorioDiario: v),
+                          ),
+                ),
+                SwitchListTile(
+                  key: const Key('switch_aviso_cuotas'),
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Cuotas por vencer'),
+                  value: usuario.preferenciasAvisos.cuotas,
+                  onChanged: cargando
+                      ? null
+                      : (v) => _guardarPreferencia(
+                            (p) => p.copyWith(cuotas: v),
+                          ),
+                ),
+                SwitchListTile(
+                  key: const Key('switch_aviso_correcciones'),
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Correcciones'),
+                  value: usuario.preferenciasAvisos.correcciones,
+                  onChanged: cargando
+                      ? null
+                      : (v) => _guardarPreferencia(
+                            (p) => p.copyWith(correcciones: v),
+                          ),
+                ),
+                SwitchListTile(
+                  key: const Key('switch_aviso_deudas_internas'),
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Deudas entre ustedes'),
+                  value: usuario.preferenciasAvisos.deudasInternas,
+                  onChanged: cargando
+                      ? null
+                      : (v) => _guardarPreferencia(
+                            (p) => p.copyWith(deudasInternas: v),
+                          ),
                 ),
               ],
               const SizedBox(height: 24),

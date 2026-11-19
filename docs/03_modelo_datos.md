@@ -15,6 +15,7 @@ ids de categorías sin tildes (ver `02_reglas_negocio.md` §3) · todo dato de u
 | diaInicioPendiente | int \| null | aplica en el siguiente período |
 | horaRecordatorio | string `HH:mm` \| null | recordatorio diario |
 | fcmTokens | array<string> | |
+| preferenciasAvisos | map | `{ alertasPresupuesto, recordatorioDiario, cuotas, correcciones, deudasInternas }` (bool; default `true`) |
 | creadoEn | Timestamp | |
 
 ### `hogares/{hogarId}`

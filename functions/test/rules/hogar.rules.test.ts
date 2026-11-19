@@ -365,6 +365,15 @@ describe("Slice 2 — Hogar, QR, Security Rules y Cloud Functions", () => {
         )
       );
       await assertFails(
+        updateDoc(
+          doc(
+            dbMiembro,
+            `hogares/${hogar.hogarId}/presupuestos/miembro-2_2026-11-01`
+          ),
+          {monto: 3000000}
+        )
+      );
+      await assertFails(
         deleteDoc(
           doc(
             dbMiembro,

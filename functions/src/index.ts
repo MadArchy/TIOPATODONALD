@@ -46,6 +46,16 @@ import {
   AsistenteResult,
   ejecutarAsistente,
 } from "./asistente";
+import {
+  ejecutarAvisosDiarios,
+  enviarAvisoAMiembrosHogar,
+  enviarAvisoAUids,
+  payloadAdminCorrigeLoSuyo,
+  payloadCorreccionPendiente,
+  payloadCorreccionResuelta,
+  payloadDeudaInternaNueva,
+  payloadPagoPorConfirmar,
+} from "./avisos";
 
 if (getApps().length === 0) {
   initializeApp();
@@ -228,11 +238,31 @@ export const resolverCorreccion = onCall(
   async (
     request: CallableRequest<ResolverCorreccionInput>
   ): Promise<ResolverCorreccionResult> => {
-    return ejecutarResolverCorreccion(
-      getFirestore(),
+    const db = getFirestore();
+    const result = await ejecutarResolverCorreccion(
+      db,
       request.auth?.uid,
       request.data
     );
+    if (!result.yaResuelta && result.solicitanteUid && result.hogarId) {
+      const aprobada = result.estado === "aprobada";
+      await enviarAvisoAUids({
+        db,
+        uids: [result.solicitanteUid],
+        tipo: "correcciones",
+        payload: payloadCorreccionResuelta(aprobada),
+      });
+      if (result.adminCorrigeLoSuyo) {
+        await enviarAvisoAMiembrosHogar({
+          db,
+          hogarId: result.hogarId,
+          tipo: "correcciones",
+          payload: payloadAdminCorrigeLoSuyo(),
+          excluirUid: request.auth?.uid,
+        });
+      }
+    }
+    return result;
   }
 );
 
@@ -249,5 +279,112 @@ export const asistente = onCall(
       request.auth?.uid,
       request.data
     );
+  }
+);
+
+/**
+ * Slice 9: recordatorio diario, cuotas mañana, correcciones pendientes.
+ * Cada 15 min en America/Bogota para respetar horaRecordatorio HH:mm.
+ */
+export const avisosDiarios = onSchedule(
+  {
+    region: REGION,
+    schedule: "every 15 minutes",
+    timeZone: "America/Bogota",
+  },
+  async () => {
+    await ejecutarAvisosDiarios(getFirestore());
+  }
+);
+
+/** Slice 9: push al admin cuando llega una corrección pendiente. */
+export const alCrearCorreccion = onDocumentCreated(
+  {
+    document: "hogares/{hogarId}/correcciones/{correccionId}",
+    region: REGION,
+  },
+  async (event) => {
+    const snap = event.data;
+    if (!snap) return;
+    const data = snap.data();
+    if (data.estado !== "pendiente") return;
+    const db = getFirestore();
+    const hogarId = event.params.hogarId;
+    const hogarSnap = await db.collection("hogares").doc(hogarId).get();
+    const adminUid = String(hogarSnap.data()?.adminUid ?? "");
+    if (!adminUid) return;
+    await enviarAvisoAUids({
+      db,
+      uids: [adminUid],
+      tipo: "correcciones",
+      payload: payloadCorreccionPendiente(),
+    });
+  }
+);
+
+/** Slice 9: push al deudor cuando el acreedor crea una deuda interna. */
+export const alCrearDeudaInterna = onDocumentCreated(
+  {
+    document: "hogares/{hogarId}/deudasInternas/{deudaId}",
+    region: REGION,
+  },
+  async (event) => {
+    const snap = event.data;
+    if (!snap) return;
+    const data = snap.data();
+    const deudorUid = String(data.deudorUid ?? "");
+    if (!deudorUid) return;
+    const acreedorUid = String(data.acreedorUid ?? "");
+    const db = getFirestore();
+    let nombre = "Alguien del hogar";
+    if (acreedorUid) {
+      const u = await db.collection("usuarios").doc(acreedorUid).get();
+      nombre = String(u.data()?.nombre ?? nombre);
+    }
+    await enviarAvisoAUids({
+      db,
+      uids: [deudorUid],
+      tipo: "deudasInternas",
+      payload: payloadDeudaInternaNueva(nombre),
+    });
+  }
+);
+
+/** Slice 9: push al acreedor cuando hay un pago por confirmar. */
+export const alCrearPagoInterno = onDocumentCreated(
+  {
+    document: "hogares/{hogarId}/deudasInternas/{deudaId}/pagos/{pagoId}",
+    region: REGION,
+  },
+  async (event) => {
+    const snap = event.data;
+    if (!snap) return;
+    const data = snap.data();
+    if (data.confirmado === true) return;
+    const db = getFirestore();
+    const hogarId = event.params.hogarId;
+    const deudaId = event.params.deudaId;
+    const deudaSnap = await db
+      .collection("hogares")
+      .doc(hogarId)
+      .collection("deudasInternas")
+      .doc(deudaId)
+      .get();
+    if (!deudaSnap.exists) return;
+    const deuda = deudaSnap.data()!;
+    const acreedorUid = String(deuda.acreedorUid ?? "");
+    if (!acreedorUid) return;
+    const porUid = String(data.registradoPor ?? deuda.deudorUid ?? "");
+    let nombre = "Tu deudor";
+    if (porUid) {
+      const u = await db.collection("usuarios").doc(porUid).get();
+      nombre = String(u.data()?.nombre ?? nombre);
+    }
+    await enviarAvisoAUids({
+      db,
+      uids: [acreedorUid],
+      tipo: "deudasInternas",
+      payload: payloadPagoPorConfirmar(nombre),
+    });
   }
 );

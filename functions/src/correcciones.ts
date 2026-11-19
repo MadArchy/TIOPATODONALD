@@ -19,6 +19,10 @@ export interface ResolverCorreccionInput {
 export interface ResolverCorreccionResult {
   estado: string;
   yaResuelta: boolean;
+  /** Para push post-transacción (Slice 9). */
+  solicitanteUid?: string;
+  adminCorrigeLoSuyo?: boolean;
+  hogarId?: string;
 }
 
 export interface DeltaSaldoDeuda {
@@ -206,7 +210,13 @@ export async function ejecutarResolverCorreccion(
         resueltaEn: FieldValue.serverTimestamp(),
         motivoRechazo,
       });
-      return {estado: "rechazada", yaResuelta: false};
+      return {
+        estado: "rechazada",
+        yaResuelta: false,
+        solicitanteUid: String(corr.solicitanteUid ?? ""),
+        adminCorrigeLoSuyo: false,
+        hogarId,
+      };
     }
 
     const movimientoId = String(corr.movimientoId ?? "");
@@ -411,6 +421,12 @@ export async function ejecutarResolverCorreccion(
       fecha: FieldValue.serverTimestamp(),
     });
 
-    return {estado: "aprobada", yaResuelta: false};
+    return {
+      estado: "aprobada",
+      yaResuelta: false,
+      solicitanteUid: String(corr.solicitanteUid ?? ""),
+      adminCorrigeLoSuyo,
+      hogarId,
+    };
   });
 }

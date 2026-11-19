@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 
 import 'core/config/app_flavor.dart';
 import 'core/config/firebase_init.dart';
+import 'core/notifications/fcm_service.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 
@@ -31,6 +32,7 @@ class PatoDonaldApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(fcmBootstrapProvider);
     final router = ref.watch(appRouterProvider);
     final flavor = ref.watch(appFlavorProvider);
 

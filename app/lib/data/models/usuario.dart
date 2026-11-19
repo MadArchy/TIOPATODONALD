@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
+import 'preferencias_avisos.dart';
+
 part 'usuario.freezed.dart';
 part 'usuario.g.dart';
 
@@ -29,6 +31,8 @@ class TimestampConverter implements JsonConverter<DateTime, Object?> {
 /// Modelo inmutable de `usuarios/{uid}` (docs/03_modelo_datos.md).
 @freezed
 abstract class Usuario with _$Usuario {
+  // ignore: invalid_annotation_target
+  @JsonSerializable(explicitToJson: true)
   const factory Usuario({
     required String uid,
     required String nombre,
@@ -38,6 +42,7 @@ abstract class Usuario with _$Usuario {
     int? diaInicioPendiente,
     String? horaRecordatorio,
     @Default(<String>[]) List<String> fcmTokens,
+    @Default(PreferenciasAvisos()) PreferenciasAvisos preferenciasAvisos,
     @TimestampConverter() required DateTime creadoEn,
   }) = _Usuario;
 

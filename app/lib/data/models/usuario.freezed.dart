@@ -16,7 +16,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$Usuario {
 
- String get uid; String get nombre; String get email; String? get hogarId; int get diaInicioPeriodo; int? get diaInicioPendiente; String? get horaRecordatorio; List<String> get fcmTokens;@TimestampConverter() DateTime get creadoEn;
+ String get uid; String get nombre; String get email; String? get hogarId; int get diaInicioPeriodo; int? get diaInicioPendiente; String? get horaRecordatorio; List<String> get fcmTokens; PreferenciasAvisos get preferenciasAvisos;@TimestampConverter() DateTime get creadoEn;
 /// Create a copy of Usuario
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -30,20 +30,20 @@ $UsuarioCopyWith<Usuario> get copyWith => _$UsuarioCopyWithImpl<Usuario>(this as
 @override
 bool operator ==(Object other) {
   final _this = this as Usuario;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Usuario&&(identical(other.uid, _this.uid) || other.uid == _this.uid)&&(identical(other.nombre, _this.nombre) || other.nombre == _this.nombre)&&(identical(other.email, _this.email) || other.email == _this.email)&&(identical(other.hogarId, _this.hogarId) || other.hogarId == _this.hogarId)&&(identical(other.diaInicioPeriodo, _this.diaInicioPeriodo) || other.diaInicioPeriodo == _this.diaInicioPeriodo)&&(identical(other.diaInicioPendiente, _this.diaInicioPendiente) || other.diaInicioPendiente == _this.diaInicioPendiente)&&(identical(other.horaRecordatorio, _this.horaRecordatorio) || other.horaRecordatorio == _this.horaRecordatorio)&&const DeepCollectionEquality().equals(other.fcmTokens, _this.fcmTokens)&&(identical(other.creadoEn, _this.creadoEn) || other.creadoEn == _this.creadoEn));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Usuario&&(identical(other.uid, _this.uid) || other.uid == _this.uid)&&(identical(other.nombre, _this.nombre) || other.nombre == _this.nombre)&&(identical(other.email, _this.email) || other.email == _this.email)&&(identical(other.hogarId, _this.hogarId) || other.hogarId == _this.hogarId)&&(identical(other.diaInicioPeriodo, _this.diaInicioPeriodo) || other.diaInicioPeriodo == _this.diaInicioPeriodo)&&(identical(other.diaInicioPendiente, _this.diaInicioPendiente) || other.diaInicioPendiente == _this.diaInicioPendiente)&&(identical(other.horaRecordatorio, _this.horaRecordatorio) || other.horaRecordatorio == _this.horaRecordatorio)&&const DeepCollectionEquality().equals(other.fcmTokens, _this.fcmTokens)&&(identical(other.preferenciasAvisos, _this.preferenciasAvisos) || other.preferenciasAvisos == _this.preferenciasAvisos)&&(identical(other.creadoEn, _this.creadoEn) || other.creadoEn == _this.creadoEn));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as Usuario;
-  return Object.hash(runtimeType,_this.uid,_this.nombre,_this.email,_this.hogarId,_this.diaInicioPeriodo,_this.diaInicioPendiente,_this.horaRecordatorio,const DeepCollectionEquality().hash(_this.fcmTokens),_this.creadoEn);
+  return Object.hash(runtimeType,_this.uid,_this.nombre,_this.email,_this.hogarId,_this.diaInicioPeriodo,_this.diaInicioPendiente,_this.horaRecordatorio,const DeepCollectionEquality().hash(_this.fcmTokens),_this.preferenciasAvisos,_this.creadoEn);
 }
 
 @override
 String toString() {
   final _this = this as Usuario;
-  return 'Usuario(uid: ${_this.uid}, nombre: ${_this.nombre}, email: ${_this.email}, hogarId: ${_this.hogarId}, diaInicioPeriodo: ${_this.diaInicioPeriodo}, diaInicioPendiente: ${_this.diaInicioPendiente}, horaRecordatorio: ${_this.horaRecordatorio}, fcmTokens: ${_this.fcmTokens}, creadoEn: ${_this.creadoEn})';
+  return 'Usuario(uid: ${_this.uid}, nombre: ${_this.nombre}, email: ${_this.email}, hogarId: ${_this.hogarId}, diaInicioPeriodo: ${_this.diaInicioPeriodo}, diaInicioPendiente: ${_this.diaInicioPendiente}, horaRecordatorio: ${_this.horaRecordatorio}, fcmTokens: ${_this.fcmTokens}, preferenciasAvisos: ${_this.preferenciasAvisos}, creadoEn: ${_this.creadoEn})';
 }
 
 
@@ -54,11 +54,11 @@ abstract mixin class $UsuarioCopyWith<$Res>  {
   factory $UsuarioCopyWith(Usuario value, $Res Function(Usuario) _then) = _$UsuarioCopyWithImpl;
 @useResult
 $Res call({
- String uid, String nombre, String email, String? hogarId, int diaInicioPeriodo, int? diaInicioPendiente, String? horaRecordatorio, List<String> fcmTokens,@TimestampConverter() DateTime creadoEn
+ String uid, String nombre, String email, String? hogarId, int diaInicioPeriodo, int? diaInicioPendiente, String? horaRecordatorio, List<String> fcmTokens, PreferenciasAvisos preferenciasAvisos,@TimestampConverter() DateTime creadoEn
 });
 
 
-
+$PreferenciasAvisosCopyWith<$Res> get preferenciasAvisos;
 
 }
 /// @nodoc
@@ -71,7 +71,7 @@ class _$UsuarioCopyWithImpl<$Res>
 
 /// Create a copy of Usuario
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? uid = null,Object? nombre = null,Object? email = null,Object? hogarId = freezed,Object? diaInicioPeriodo = null,Object? diaInicioPendiente = freezed,Object? horaRecordatorio = freezed,Object? fcmTokens = null,Object? creadoEn = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? uid = null,Object? nombre = null,Object? email = null,Object? hogarId = freezed,Object? diaInicioPeriodo = null,Object? diaInicioPendiente = freezed,Object? horaRecordatorio = freezed,Object? fcmTokens = null,Object? preferenciasAvisos = null,Object? creadoEn = null,}) {
   return _then(Usuario(
 uid: null == uid ? _self.uid : uid // ignore: cast_nullable_to_non_nullable
 as String,nombre: null == nombre ? _self.nombre : nombre // ignore: cast_nullable_to_non_nullable
@@ -81,11 +81,21 @@ as String?,diaInicioPeriodo: null == diaInicioPeriodo ? _self.diaInicioPeriodo :
 as int,diaInicioPendiente: freezed == diaInicioPendiente ? _self.diaInicioPendiente : diaInicioPendiente // ignore: cast_nullable_to_non_nullable
 as int?,horaRecordatorio: freezed == horaRecordatorio ? _self.horaRecordatorio : horaRecordatorio // ignore: cast_nullable_to_non_nullable
 as String?,fcmTokens: null == fcmTokens ? _self.fcmTokens : fcmTokens // ignore: cast_nullable_to_non_nullable
-as List<String>,creadoEn: null == creadoEn ? _self.creadoEn : creadoEn // ignore: cast_nullable_to_non_nullable
+as List<String>,preferenciasAvisos: null == preferenciasAvisos ? _self.preferenciasAvisos : preferenciasAvisos // ignore: cast_nullable_to_non_nullable
+as PreferenciasAvisos,creadoEn: null == creadoEn ? _self.creadoEn : creadoEn // ignore: cast_nullable_to_non_nullable
 as DateTime,
   ));
 }
-
+/// Create a copy of Usuario
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$PreferenciasAvisosCopyWith<$Res> get preferenciasAvisos {
+  
+  return $PreferenciasAvisosCopyWith<$Res>(_self.preferenciasAvisos, (value) {
+    return _then(_self.copyWith(preferenciasAvisos: value));
+  });
+}
 }
 
 
@@ -167,10 +177,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String uid,  String nombre,  String email,  String? hogarId,  int diaInicioPeriodo,  int? diaInicioPendiente,  String? horaRecordatorio,  List<String> fcmTokens, @TimestampConverter()  DateTime creadoEn)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String uid,  String nombre,  String email,  String? hogarId,  int diaInicioPeriodo,  int? diaInicioPendiente,  String? horaRecordatorio,  List<String> fcmTokens,  PreferenciasAvisos preferenciasAvisos, @TimestampConverter()  DateTime creadoEn)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _Usuario() when $default != null:
-return $default(_that.uid,_that.nombre,_that.email,_that.hogarId,_that.diaInicioPeriodo,_that.diaInicioPendiente,_that.horaRecordatorio,_that.fcmTokens,_that.creadoEn);case _:
+return $default(_that.uid,_that.nombre,_that.email,_that.hogarId,_that.diaInicioPeriodo,_that.diaInicioPendiente,_that.horaRecordatorio,_that.fcmTokens,_that.preferenciasAvisos,_that.creadoEn);case _:
   return orElse();
 
 }
@@ -188,10 +198,10 @@ return $default(_that.uid,_that.nombre,_that.email,_that.hogarId,_that.diaInicio
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String uid,  String nombre,  String email,  String? hogarId,  int diaInicioPeriodo,  int? diaInicioPendiente,  String? horaRecordatorio,  List<String> fcmTokens, @TimestampConverter()  DateTime creadoEn)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String uid,  String nombre,  String email,  String? hogarId,  int diaInicioPeriodo,  int? diaInicioPendiente,  String? horaRecordatorio,  List<String> fcmTokens,  PreferenciasAvisos preferenciasAvisos, @TimestampConverter()  DateTime creadoEn)  $default,) {final _that = this;
 switch (_that) {
 case _Usuario():
-return $default(_that.uid,_that.nombre,_that.email,_that.hogarId,_that.diaInicioPeriodo,_that.diaInicioPendiente,_that.horaRecordatorio,_that.fcmTokens,_that.creadoEn);case _:
+return $default(_that.uid,_that.nombre,_that.email,_that.hogarId,_that.diaInicioPeriodo,_that.diaInicioPendiente,_that.horaRecordatorio,_that.fcmTokens,_that.preferenciasAvisos,_that.creadoEn);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -208,10 +218,10 @@ return $default(_that.uid,_that.nombre,_that.email,_that.hogarId,_that.diaInicio
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String uid,  String nombre,  String email,  String? hogarId,  int diaInicioPeriodo,  int? diaInicioPendiente,  String? horaRecordatorio,  List<String> fcmTokens, @TimestampConverter()  DateTime creadoEn)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String uid,  String nombre,  String email,  String? hogarId,  int diaInicioPeriodo,  int? diaInicioPendiente,  String? horaRecordatorio,  List<String> fcmTokens,  PreferenciasAvisos preferenciasAvisos, @TimestampConverter()  DateTime creadoEn)?  $default,) {final _that = this;
 switch (_that) {
 case _Usuario() when $default != null:
-return $default(_that.uid,_that.nombre,_that.email,_that.hogarId,_that.diaInicioPeriodo,_that.diaInicioPendiente,_that.horaRecordatorio,_that.fcmTokens,_that.creadoEn);case _:
+return $default(_that.uid,_that.nombre,_that.email,_that.hogarId,_that.diaInicioPeriodo,_that.diaInicioPendiente,_that.horaRecordatorio,_that.fcmTokens,_that.preferenciasAvisos,_that.creadoEn);case _:
   return null;
 
 }
@@ -220,10 +230,10 @@ return $default(_that.uid,_that.nombre,_that.email,_that.hogarId,_that.diaInicio
 }
 
 /// @nodoc
-@JsonSerializable()
 
+@JsonSerializable(explicitToJson: true)
 class _Usuario implements Usuario {
-  const _Usuario({required this.uid, required this.nombre, required this.email, this.hogarId, this.diaInicioPeriodo = 1, this.diaInicioPendiente, this.horaRecordatorio,  List<String> fcmTokens = const <String>[], @TimestampConverter() required this.creadoEn}): _fcmTokens = fcmTokens;
+  const _Usuario({required this.uid, required this.nombre, required this.email, this.hogarId, this.diaInicioPeriodo = 1, this.diaInicioPendiente, this.horaRecordatorio,  List<String> fcmTokens = const <String>[], this.preferenciasAvisos = const PreferenciasAvisos(), @TimestampConverter() required this.creadoEn}): _fcmTokens = fcmTokens;
   factory _Usuario.fromJson(Map<String, dynamic> json) => _$UsuarioFromJson(json);
 
 @override final  String uid;
@@ -240,6 +250,7 @@ class _Usuario implements Usuario {
   return EqualUnmodifiableListView(_fcmTokens);
 }
 
+@override@JsonKey() final  PreferenciasAvisos preferenciasAvisos;
 @override@TimestampConverter() final  DateTime creadoEn;
 
 /// Create a copy of Usuario
@@ -255,18 +266,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _Usuario&&(identical(other.uid, uid) || other.uid == uid)&&(identical(other.nombre, nombre) || other.nombre == nombre)&&(identical(other.email, email) || other.email == email)&&(identical(other.hogarId, hogarId) || other.hogarId == hogarId)&&(identical(other.diaInicioPeriodo, diaInicioPeriodo) || other.diaInicioPeriodo == diaInicioPeriodo)&&(identical(other.diaInicioPendiente, diaInicioPendiente) || other.diaInicioPendiente == diaInicioPendiente)&&(identical(other.horaRecordatorio, horaRecordatorio) || other.horaRecordatorio == horaRecordatorio)&&const DeepCollectionEquality().equals(other.fcmTokens, _fcmTokens)&&(identical(other.creadoEn, creadoEn) || other.creadoEn == creadoEn));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _Usuario&&(identical(other.uid, uid) || other.uid == uid)&&(identical(other.nombre, nombre) || other.nombre == nombre)&&(identical(other.email, email) || other.email == email)&&(identical(other.hogarId, hogarId) || other.hogarId == hogarId)&&(identical(other.diaInicioPeriodo, diaInicioPeriodo) || other.diaInicioPeriodo == diaInicioPeriodo)&&(identical(other.diaInicioPendiente, diaInicioPendiente) || other.diaInicioPendiente == diaInicioPendiente)&&(identical(other.horaRecordatorio, horaRecordatorio) || other.horaRecordatorio == horaRecordatorio)&&const DeepCollectionEquality().equals(other.fcmTokens, _fcmTokens)&&(identical(other.preferenciasAvisos, preferenciasAvisos) || other.preferenciasAvisos == preferenciasAvisos)&&(identical(other.creadoEn, creadoEn) || other.creadoEn == creadoEn));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,uid,nombre,email,hogarId,diaInicioPeriodo,diaInicioPendiente,horaRecordatorio,const DeepCollectionEquality().hash(_fcmTokens),creadoEn);
+    return Object.hash(runtimeType,uid,nombre,email,hogarId,diaInicioPeriodo,diaInicioPendiente,horaRecordatorio,const DeepCollectionEquality().hash(_fcmTokens),preferenciasAvisos,creadoEn);
 }
 
 @override
 String toString() {
-    return 'Usuario(uid: $uid, nombre: $nombre, email: $email, hogarId: $hogarId, diaInicioPeriodo: $diaInicioPeriodo, diaInicioPendiente: $diaInicioPendiente, horaRecordatorio: $horaRecordatorio, fcmTokens: $fcmTokens, creadoEn: $creadoEn)';
+    return 'Usuario(uid: $uid, nombre: $nombre, email: $email, hogarId: $hogarId, diaInicioPeriodo: $diaInicioPeriodo, diaInicioPendiente: $diaInicioPendiente, horaRecordatorio: $horaRecordatorio, fcmTokens: $fcmTokens, preferenciasAvisos: $preferenciasAvisos, creadoEn: $creadoEn)';
 }
 
 
@@ -277,11 +288,11 @@ abstract mixin class _$UsuarioCopyWith<$Res> implements $UsuarioCopyWith<$Res> {
   factory _$UsuarioCopyWith(_Usuario value, $Res Function(_Usuario) _then) = __$UsuarioCopyWithImpl;
 @override @useResult
 $Res call({
- String uid, String nombre, String email, String? hogarId, int diaInicioPeriodo, int? diaInicioPendiente, String? horaRecordatorio, List<String> fcmTokens,@TimestampConverter() DateTime creadoEn
+ String uid, String nombre, String email, String? hogarId, int diaInicioPeriodo, int? diaInicioPendiente, String? horaRecordatorio, List<String> fcmTokens, PreferenciasAvisos preferenciasAvisos,@TimestampConverter() DateTime creadoEn
 });
 
 
-
+@override $PreferenciasAvisosCopyWith<$Res> get preferenciasAvisos;
 
 }
 /// @nodoc
@@ -294,7 +305,7 @@ class __$UsuarioCopyWithImpl<$Res>
 
 /// Create a copy of Usuario
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? uid = null,Object? nombre = null,Object? email = null,Object? hogarId = freezed,Object? diaInicioPeriodo = null,Object? diaInicioPendiente = freezed,Object? horaRecordatorio = freezed,Object? fcmTokens = null,Object? creadoEn = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? uid = null,Object? nombre = null,Object? email = null,Object? hogarId = freezed,Object? diaInicioPeriodo = null,Object? diaInicioPendiente = freezed,Object? horaRecordatorio = freezed,Object? fcmTokens = null,Object? preferenciasAvisos = null,Object? creadoEn = null,}) {
   return _then(_Usuario(
 uid: null == uid ? _self.uid : uid // ignore: cast_nullable_to_non_nullable
 as String,nombre: null == nombre ? _self.nombre : nombre // ignore: cast_nullable_to_non_nullable
@@ -304,12 +315,22 @@ as String?,diaInicioPeriodo: null == diaInicioPeriodo ? _self.diaInicioPeriodo :
 as int,diaInicioPendiente: freezed == diaInicioPendiente ? _self.diaInicioPendiente : diaInicioPendiente // ignore: cast_nullable_to_non_nullable
 as int?,horaRecordatorio: freezed == horaRecordatorio ? _self.horaRecordatorio : horaRecordatorio // ignore: cast_nullable_to_non_nullable
 as String?,fcmTokens: null == fcmTokens ? _self._fcmTokens : fcmTokens // ignore: cast_nullable_to_non_nullable
-as List<String>,creadoEn: null == creadoEn ? _self.creadoEn : creadoEn // ignore: cast_nullable_to_non_nullable
+as List<String>,preferenciasAvisos: null == preferenciasAvisos ? _self.preferenciasAvisos : preferenciasAvisos // ignore: cast_nullable_to_non_nullable
+as PreferenciasAvisos,creadoEn: null == creadoEn ? _self.creadoEn : creadoEn // ignore: cast_nullable_to_non_nullable
 as DateTime,
   ));
 }
 
-
+/// Create a copy of Usuario
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$PreferenciasAvisosCopyWith<$Res> get preferenciasAvisos {
+  
+  return $PreferenciasAvisosCopyWith<$Res>(_self.preferenciasAvisos, (value) {
+    return _then(_self.copyWith(preferenciasAvisos: value));
+  });
+}
 }
 
 // dart format on

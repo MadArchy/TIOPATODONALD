@@ -1,0 +1,6 @@
+# Copia este archivo a app/android/key.properties (ignorado por git)
+# y completa con los datos de tu keystore de release.
+storePassword=CAMBIA_ESTA_CLAVE
+keyPassword=CAMBIA_ESTA_CLAVE
+keyAlias=patodonald
+storeFile=../upload-keystore.jks

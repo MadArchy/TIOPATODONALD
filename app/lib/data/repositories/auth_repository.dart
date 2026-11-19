@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/errors/auth_failures.dart';
+import '../models/preferencias_avisos.dart';
 import '../models/usuario.dart';
 
 /// Contrato del repositorio de autenticación y perfil de usuario (`usuarios/{uid}`).
@@ -34,6 +35,30 @@ abstract class AuthRepository {
 
   /// Cierra la sesión actual.
   Future<void> cerrarSesion();
+
+  /// Agrega un token FCM (idempotente con arrayUnion).
+  Future<void> registrarFcmToken({
+    required String uid,
+    required String token,
+  });
+
+  /// Quita un token FCM.
+  Future<void> quitarFcmToken({
+    required String uid,
+    required String token,
+  });
+
+  /// Guarda la hora del recordatorio diario (`HH:mm` o null para apagar).
+  Future<void> guardarHoraRecordatorio({
+    required String uid,
+    required String? horaRecordatorio,
+  });
+
+  /// Actualiza preferencias de avisos push.
+  Future<void> guardarPreferenciasAvisos({
+    required String uid,
+    required PreferenciasAvisos preferencias,
+  });
 }
 
 class FirebaseAuthRepository implements AuthRepository {
@@ -108,6 +133,13 @@ class FirebaseAuthRepository implements AuthRepository {
         'diaInicioPendiente': null,
         'horaRecordatorio': null,
         'fcmTokens': <String>[],
+        'preferenciasAvisos': <String, dynamic>{
+          'alertasPresupuesto': true,
+          'recordatorioDiario': true,
+          'cuotas': true,
+          'correcciones': true,
+          'deudasInternas': true,
+        },
         'creadoEn': FieldValue.serverTimestamp(),
       };
 
@@ -175,6 +207,50 @@ class FirebaseAuthRepository implements AuthRepository {
     } catch (e) {
       throw mapearErrorFirebaseAuth(e);
     }
+  }
+
+  @override
+  Future<void> registrarFcmToken({
+    required String uid,
+    required String token,
+  }) async {
+    final t = token.trim();
+    if (t.isEmpty) return;
+    await _usuariosRef.doc(uid).update({
+      'fcmTokens': FieldValue.arrayUnion(<String>[t]),
+    });
+  }
+
+  @override
+  Future<void> quitarFcmToken({
+    required String uid,
+    required String token,
+  }) async {
+    final t = token.trim();
+    if (t.isEmpty) return;
+    await _usuariosRef.doc(uid).update({
+      'fcmTokens': FieldValue.arrayRemove(<String>[t]),
+    });
+  }
+
+  @override
+  Future<void> guardarHoraRecordatorio({
+    required String uid,
+    required String? horaRecordatorio,
+  }) async {
+    await _usuariosRef.doc(uid).update({
+      'horaRecordatorio': horaRecordatorio,
+    });
+  }
+
+  @override
+  Future<void> guardarPreferenciasAvisos({
+    required String uid,
+    required PreferenciasAvisos preferencias,
+  }) async {
+    await _usuariosRef.doc(uid).update({
+      'preferenciasAvisos': preferencias.toJson(),
+    });
   }
 }
 

@@ -39,6 +39,13 @@ describe("Firestore Security Rules — Slice 1: usuarios/{uid}", () => {
     diaInicioPendiente: null,
     horaRecordatorio: null,
     fcmTokens: [],
+    preferenciasAvisos: {
+      alertasPresupuesto: true,
+      recordatorioDiario: true,
+      cuotas: true,
+      correcciones: true,
+      deudasInternas: true,
+    },
     creadoEn: new Date(),
   };
 
@@ -110,5 +117,22 @@ describe("Firestore Security Rules — Slice 1: usuarios/{uid}", () => {
 
     await assertSucceeds(setDoc(ref, datosUsuarioBase));
     await assertFails(deleteDoc(ref));
+  });
+
+  it("permite al dueño actualizar fcmTokens, horaRecordatorio y preferenciasAvisos", async () => {
+    const db = testEnv.authenticatedContext("uid-1").firestore();
+    const ref = doc(db, "usuarios/uid-1");
+    await assertSucceeds(setDoc(ref, datosUsuarioBase));
+
+    await assertSucceeds(
+      updateDoc(ref, {
+        fcmTokens: ["token-abc"],
+        horaRecordatorio: "08:00",
+        preferenciasAvisos: {
+          ...datosUsuarioBase.preferenciasAvisos,
+          recordatorioDiario: false,
+        },
+      })
+    );
   });
 });

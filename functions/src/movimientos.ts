@@ -145,67 +145,104 @@ export async function manejarAlEditarMovimiento(
 /**
  * Trigger onCreate: si pagoCuota, baja saldoActual en transacción e idempotente
  * con saldoAplicado. Si llega a 0 → estado pagada.
+ * Además: alertas 50/80/100 + push si aplica (gasto o pagoCuota).
  */
 export async function ejecutarAlCrearMovimiento(
   db: Firestore,
   hogarId: string,
   movimientoId: string,
   data: Record<string, unknown> | undefined
-): Promise<{aplicado: boolean}> {
-  if (!data || data.tipo !== "pagoCuota") {
-    return {aplicado: false};
+): Promise<{aplicado: boolean; alertas: number[]}> {
+  let aplicado = false;
+
+  if (data && data.tipo === "pagoCuota") {
+    const deudaId = data.deudaId;
+    if (typeof deudaId === "string" && deudaId.length > 0) {
+      const monto = typeof data.monto === "number" ? data.monto : 0;
+
+      const movRef = db
+        .collection("hogares")
+        .doc(hogarId)
+        .collection("movimientos")
+        .doc(movimientoId);
+      const deudaRef = db
+        .collection("hogares")
+        .doc(hogarId)
+        .collection("deudas")
+        .doc(deudaId);
+
+      const resultado = await db.runTransaction(async (tx) => {
+        const movSnap = await tx.get(movRef);
+        if (!movSnap.exists) {
+          return {aplicado: false};
+        }
+        const mov = movSnap.data() as Record<string, unknown>;
+        if (mov.tipo !== "pagoCuota") {
+          return {aplicado: false};
+        }
+        const deudaSnap = await tx.get(deudaRef);
+        if (!deudaSnap.exists) {
+          return {aplicado: false};
+        }
+        const deuda = deudaSnap.data() as Record<string, unknown>;
+        const calculo = calcularAplicacionPagoCuota({
+          saldoAplicado: mov.saldoAplicado === true,
+          saldoActual:
+            typeof deuda.saldoActual === "number" ? deuda.saldoActual : 0,
+          monto: typeof mov.monto === "number" ? mov.monto : monto,
+          estadoActual:
+            typeof deuda.estado === "string" ? deuda.estado : "activa",
+        });
+        if (!calculo.aplicar) {
+          return {aplicado: false};
+        }
+
+        tx.update(deudaRef, {
+          saldoActual: calculo.nuevoSaldo,
+          estado: calculo.nuevoEstado,
+        });
+        tx.update(movRef, {saldoAplicado: true});
+        return {aplicado: true};
+      });
+      aplicado = resultado.aplicado;
+    }
   }
-  const deudaId = data.deudaId;
-  if (typeof deudaId !== "string" || deudaId.length === 0) {
-    return {aplicado: false};
+
+  const alertas: number[] = [];
+  const tipo = data ? String(data.tipo ?? "") : "";
+  const estado = data ? String(data.estado ?? "activo") : "";
+  const uid = data && typeof data.uid === "string" ? data.uid : "";
+  const periodoId =
+    data && typeof data.periodoId === "string" ? data.periodoId : "";
+  if (
+    (tipo === "gasto" || tipo === "pagoCuota") &&
+    estado === "activo" &&
+    uid &&
+    periodoId
+  ) {
+    const {
+      procesarAlertasPresupuestoTrasMovimiento,
+      enviarAvisoAUids,
+      payloadAlertaPresupuesto,
+    } = await import("./avisos");
+    const nuevas = await procesarAlertasPresupuestoTrasMovimiento({
+      db,
+      hogarId,
+      uid,
+      periodoId,
+    });
+    alertas.push(...nuevas);
+    for (const umbral of nuevas) {
+      await enviarAvisoAUids({
+        db,
+        uids: [uid],
+        tipo: "alertasPresupuesto",
+        payload: payloadAlertaPresupuesto(umbral),
+      });
+    }
   }
-  const monto = typeof data.monto === "number" ? data.monto : 0;
 
-  const movRef = db
-    .collection("hogares")
-    .doc(hogarId)
-    .collection("movimientos")
-    .doc(movimientoId);
-  const deudaRef = db
-    .collection("hogares")
-    .doc(hogarId)
-    .collection("deudas")
-    .doc(deudaId);
-
-  const resultado = await db.runTransaction(async (tx) => {
-    const movSnap = await tx.get(movRef);
-    if (!movSnap.exists) {
-      return {aplicado: false};
-    }
-    const mov = movSnap.data() as Record<string, unknown>;
-    if (mov.tipo !== "pagoCuota") {
-      return {aplicado: false};
-    }
-    const deudaSnap = await tx.get(deudaRef);
-    if (!deudaSnap.exists) {
-      return {aplicado: false};
-    }
-    const deuda = deudaSnap.data() as Record<string, unknown>;
-    const calculo = calcularAplicacionPagoCuota({
-      saldoAplicado: mov.saldoAplicado === true,
-      saldoActual: typeof deuda.saldoActual === "number" ? deuda.saldoActual : 0,
-      monto: typeof mov.monto === "number" ? mov.monto : monto,
-      estadoActual:
-        typeof deuda.estado === "string" ? deuda.estado : "activa",
-    });
-    if (!calculo.aplicar) {
-      return {aplicado: false};
-    }
-
-    tx.update(deudaRef, {
-      saldoActual: calculo.nuevoSaldo,
-      estado: calculo.nuevoEstado,
-    });
-    tx.update(movRef, {saldoAplicado: true});
-    return {aplicado: true};
-  });
-
-  return resultado;
+  return {aplicado, alertas};
 }
 
 /** Adaptador tipado para el trigger onDocumentCreated. */

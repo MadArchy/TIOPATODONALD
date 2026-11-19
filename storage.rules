@@ -21,7 +21,7 @@ service firebase.storage {
         request.resource.contentType.matches('image/.*') &&
         request.resource.size < 1 * 1024 * 1024;
 
-      allow delete: if esMiembroActivoStorage(hogarId);
+      allow delete: if false;
     }
 
     match /{allPaths=**} {

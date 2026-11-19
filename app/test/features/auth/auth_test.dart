@@ -53,6 +53,19 @@ void main() {
   });
 
   group('evaluarRedireccionRouter (guardas del Router)', () {
+    test('sin onboarding visto redirige a /onboarding', () {
+      expect(
+        evaluarRedireccionRouter(
+          ubicacionActual: '/bienvenida',
+          uid: null,
+          usuario: null,
+          cargandoEstado: false,
+          onboardingVisto: false,
+        ),
+        '/onboarding',
+      );
+    });
+
     final usuarioSinHogar = Usuario(
       uid: 'u1',
       nombre: 'Donald',

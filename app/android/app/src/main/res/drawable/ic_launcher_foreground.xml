@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Casa del hogar (Material 3 estilizado) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,28 L27,50 L33,50 L33,76 L75,76 L75,50 L81,50 Z" />
+    <!-- Escudo/moneda interior en azul primario -->
+    <path
+        android:fillColor="#0D47A1"
+        android:pathData="M54,46 A12,12 0 1,0 54,70 A12,12 0 1,0 54,46 Z" />
+    <!-- Indicador verde de semáforo (finanzas sanas) -->
+    <path
+        android:fillColor="#4CAF50"
+        android:pathData="M54,50 A8,8 0 1,0 54,66 A8,8 0 1,0 54,50 Z" />
+    <!-- Marca de check blanca -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M51.2,61.6 L47.6,58.0 L49.4,56.2 L51.2,58.0 L58.6,50.6 L60.4,52.4 Z" />
+</vector>

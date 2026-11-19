@@ -1,7 +1,29 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+// Aplica Google Services automáticamente cuando exista google-services.json
+// (generado por `flutterfire configure` para dev/prod).
+val tieneGoogleServices = listOf(
+    file("google-services.json"),
+    file("src/dev/google-services.json"),
+    file("src/prod/google-services.json"),
+).any { it.exists() }
+if (tieneGoogleServices) {
+    apply(plugin = "com.google.gms.google-services")
+}
+
+// Firma de release desde app/android/key.properties (ignorado en git).
+val keystoreProperties = Properties()
+val keystorePropertiesFile = rootProject.file("key.properties")
+val tieneKeystoreRelease = keystorePropertiesFile.exists()
+if (tieneKeystoreRelease) {
+    FileInputStream(keystorePropertiesFile).use { keystoreProperties.load(it) }
 }
 
 android {
@@ -36,11 +58,24 @@ android {
         }
     }
 
+    signingConfigs {
+        if (tieneKeystoreRelease) {
+            create("release") {
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+                storeFile = file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = if (tieneKeystoreRelease) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
 }

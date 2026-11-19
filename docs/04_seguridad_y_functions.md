@@ -10,7 +10,7 @@ no puede hacer solo (tocar datos de otros, validar QR, aprobar, bajar saldos).
 | `usuarios/{uid}` | el propio uid | el propio uid (sin `hogarId`) | el propio uid, sin tocar `hogarId` | no |
 | `hogares/{h}` | miembro activo | no (Function) | no (Function) | no |
 | `miembros`, `invitaciones`, `auditoria`, `resumenes`, `usoIA` | miembro activo (invitaciones: solo admin) | no | no | no |
-| `presupuestos/{uid}_{p}` | miembro activo | ese uid, monto int > 0 | ese uid | no |
+| `presupuestos/{uid}_{p}` | miembro activo | ese uid, monto int > 0 | no (Function) | no |
 | `movimientos` | miembro activo | ver abajo | ver abajo | **no** |
 | `gastosFijos` | miembro activo | uid propio | uid propio | uid propio |
 | `deudas` | miembro activo | admin, `saldoActual == saldoInicial` | admin, sin tocar `saldoActual` | no |
@@ -35,11 +35,14 @@ no puede hacer solo (tocar datos de otros, validar QR, aprobar, bajar saldos).
 | `unirseConCodigo` | callable | Agrega miembro, setea `usuarios.hogarId` | código activo y no vencido; usuario sin hogar |
 | `sacarMiembro` | callable | `estado: retirado`, `usuarios.hogarId = null` | admin; no puede sacarse a sí mismo |
 | `resolverCorreccion` | callable | Aplica cambios, ajusta saldos si hay reclasificación, escribe auditoría, notifica | admin; plazo de corrección |
-| `alCrearMovimiento` | trigger onCreate | Si `pagoCuota`: baja `saldoActual` (transacción, marca `saldoAplicado`); revisa alertas 50/80/100 | idempotente |
+| `alCrearMovimiento` | trigger onCreate | Si `pagoCuota`: baja `saldoActual` (transacción, marca `saldoAplicado`); revisa alertas 50/80/100 y push | idempotente |
 | `alEditarMovimiento` | trigger onUpdate | Escribe auditoría `edicionMenor` | |
+| `alCrearCorreccion` | trigger onCreate | Push al admin si `pendiente` | |
+| `alCrearDeudaInterna` | trigger onCreate | Push al deudor | |
+| `alCrearPagoInterno` | trigger onCreate | Push al acreedor si pago no confirmado | |
 | `confirmarPagoInterno` | callable | Marca pago confirmado, baja saldo, cierra deuda en 0 | acreedor |
 | `cerrarPeriodos` | programada diaria 00:30 Bogotá | Genera `resumenes` de quienes cerraron período; aplica `diaInicioPendiente` | |
-| `avisosDiarios` | programada | Recordatorio diario, cuotas que vencen mañana, correcciones pendientes al admin | |
+| `avisosDiarios` | programada cada 15 min Bogotá | Recordatorio diario (`horaRecordatorio`), cuotas que vencen mañana, correcciones pendientes al admin | respeta `preferenciasAvisos` |
 | `asistente` | callable | **Puerta de IA**: hoy responde "próximamente" | miembro activo; `hogar.ia.activa` |
 
 Requiere plan **Blaze** (pago por uso). Para una familia el costo esperado es casi cero, pero pide tarjeta.

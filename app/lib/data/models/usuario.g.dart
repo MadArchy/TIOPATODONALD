@@ -17,6 +17,11 @@ _Usuario _$UsuarioFromJson(Map<String, dynamic> json) => _Usuario(
   fcmTokens:
       (json['fcmTokens'] as List<dynamic>?)?.map((e) => e as String).toList() ??
       const <String>[],
+  preferenciasAvisos: json['preferenciasAvisos'] == null
+      ? const PreferenciasAvisos()
+      : PreferenciasAvisos.fromJson(
+          json['preferenciasAvisos'] as Map<String, dynamic>,
+        ),
   creadoEn: const TimestampConverter().fromJson(json['creadoEn']),
 );
 
@@ -29,5 +34,6 @@ Map<String, dynamic> _$UsuarioToJson(_Usuario instance) => <String, dynamic>{
   'diaInicioPendiente': instance.diaInicioPendiente,
   'horaRecordatorio': instance.horaRecordatorio,
   'fcmTokens': instance.fcmTokens,
+  'preferenciasAvisos': instance.preferenciasAvisos.toJson(),
   'creadoEn': const TimestampConverter().toJson(instance.creadoEn),
 };

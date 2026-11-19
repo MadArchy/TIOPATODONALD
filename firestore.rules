@@ -72,7 +72,10 @@ service cloud.firestore {
       match /presupuestos/{presupuestoId} {
         allow read: if esMiembroActivo(hogarId);
 
-        allow create, update: if esMiembroActivo(hogarId) &&
+        // Creación inicial del presupuesto del período por el propio usuario.
+        // Cambios posteriores de monto pasan por `cambiarPresupuesto` (auditoría)
+        // y `alertasEnviadas` solo lo actualiza el servidor (`alCrearMovimiento`).
+        allow create: if esMiembroActivo(hogarId) &&
           request.resource.data.uid == request.auth.uid &&
           request.resource.data.periodoId is string &&
           request.resource.data.periodoId.size() == 10 &&
@@ -80,7 +83,7 @@ service cloud.firestore {
           request.resource.data.monto is int &&
           request.resource.data.monto > 0;
 
-        allow delete: if false;
+        allow update, delete: if false;
       }
 
       // Slice 3 — movimientos y gastos fijos

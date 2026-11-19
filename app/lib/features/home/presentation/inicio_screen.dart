@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/indicadores.dart';
 import '../../../core/periodo.dart';
@@ -31,31 +32,54 @@ class InicioScreen extends ConsumerStatefulWidget {
 
 class _InicioScreenState extends ConsumerState<InicioScreen> {
   List<int> _alertasPendientesUi = const [];
-  bool _marcandoAlertas = false;
+  Set<int> _alertasDescartadasLocal = <int>{};
+  String? _presupuestoIdCargado;
 
-  Future<void> _persistirAlertas(List<int> nuevas) async {
-    if (_marcandoAlertas || nuevas.isEmpty) return;
-    final usuario = ref.read(usuarioActualProvider).value;
-    final presupuesto = ref.read(presupuestoVigenteProvider).value;
-    final hogarId = usuario?.hogarId;
-    if (usuario == null || presupuesto == null || hogarId == null) return;
+  String _claveLocalAlertas(String presupuestoId) =>
+      'alertas_banner_vistas_$presupuestoId';
 
-    _marcandoAlertas = true;
+  Future<void> _cargarDescartadasLocal(String presupuestoId) async {
+    if (_presupuestoIdCargado == presupuestoId) return;
+    _presupuestoIdCargado = presupuestoId;
     try {
-      final combinadas = <int>{
-        ...presupuesto.alertasEnviadas,
-        ...nuevas,
-      }.toList()
-        ..sort();
-      await ref.read(hogarRepositoryProvider).marcarAlertasEnviadas(
-            hogarId: hogarId,
-            presupuestoId: presupuesto.id,
-            alertasEnviadas: combinadas,
-          );
+      final prefs = await SharedPreferences.getInstance();
+      final guardadas = prefs.getStringList(_claveLocalAlertas(presupuestoId));
+      final parsed = (guardadas ?? const <String>[])
+          .map(int.tryParse)
+          .whereType<int>()
+          .toSet();
+      if (!mounted) return;
+      setState(() {
+        _alertasDescartadasLocal = parsed;
+        _alertasPendientesUi = _alertasPendientesUi
+            .where((u) => !parsed.contains(u))
+            .toList();
+      });
     } catch (_) {
-      // Offline: el banner sigue visible; se reintenta al sincronizar.
-    } finally {
-      _marcandoAlertas = false;
+      // Sin persistencia local disponible: solo estado en memoria.
+    }
+  }
+
+  /// Guarda solo localmente los banners ya vistos; `presupuestos.alertasEnviadas`
+  /// lo escribe exclusivamente el servidor (`alCrearMovimiento`) para evitar
+  /// condición de carrera con el envío de push FCM.
+  Future<void> _descartarAlertasUi(List<int> umbrales) async {
+    final presupuesto = ref.read(presupuestoVigenteProvider).value;
+    final actualizadas = <int>{..._alertasDescartadasLocal, ...umbrales};
+    setState(() {
+      _alertasDescartadasLocal = actualizadas;
+      _alertasPendientesUi = const [];
+    });
+    if (presupuesto == null) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final lista = actualizadas.toList()..sort();
+      await prefs.setStringList(
+        _claveLocalAlertas(presupuesto.id),
+        lista.map((e) => '$e').toList(),
+      );
+    } catch (_) {
+      // Ignorar si SharedPreferences falla en entornos de prueba.
     }
   }
 
@@ -84,19 +108,26 @@ class _InicioScreenState extends ConsumerState<InicioScreen> {
       }
     });
 
-    // Detectar alertas nuevas al cambiar indicadores / presupuesto.
+    if (presupuesto != null && _presupuestoIdCargado != presupuesto.id) {
+      // ignore: discarded_futures
+      _cargarDescartadasLocal(presupuesto.id);
+    }
+
+    // Detectar alertas nuevas para banner in-app (sin escribir en Firestore).
     ref.listen(indicadoresPropiosProvider, (prev, next) {
       final prep = ref.read(presupuestoVigenteProvider).value;
       if (next == null || prep == null) return;
+      final yaVistas = <int>{
+        ...prep.alertasEnviadas,
+        ..._alertasDescartadasLocal,
+      }.toList();
       final nuevas = alertasNuevas(
         gastado: next.gastado,
         presupuesto: next.presupuesto,
-        alertasEnviadas: prep.alertasEnviadas,
+        alertasEnviadas: yaVistas,
       );
       if (nuevas.isNotEmpty) {
         setState(() => _alertasPendientesUi = nuevas);
-        // ignore: discarded_futures
-        _persistirAlertas(nuevas);
       }
     });
 
@@ -183,8 +214,10 @@ class _InicioScreenState extends ConsumerState<InicioScreen> {
                   if (_alertasPendientesUi.isNotEmpty) ...[
                     AlertaPresupuestoBanner(
                       umbrales: _alertasPendientesUi,
-                      onDismiss: () =>
-                          setState(() => _alertasPendientesUi = const []),
+                      onDismiss: () {
+                        // ignore: discarded_futures
+                        _descartarAlertasUi(_alertasPendientesUi);
+                      },
                     ),
                     const SizedBox(height: 12),
                   ],

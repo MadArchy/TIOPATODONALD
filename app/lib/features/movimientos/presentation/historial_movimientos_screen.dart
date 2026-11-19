@@ -152,7 +152,9 @@ class _HistorialMovimientosScreenState
               data: (lista) {
                 if (lista.isEmpty) {
                   return const Center(
-                    child: Text('Aún no hay movimientos en este período.'),
+                    child: Text(
+                      'Aún no registras nada este período. Toca + para empezar.',
+                    ),
                   );
                 }
                 return ListView.separated(

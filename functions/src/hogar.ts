@@ -130,6 +130,13 @@ export async function ejecutarCrearHogar(
         diaInicioPendiente: null,
         horaRecordatorio: null,
         fcmTokens: [],
+        preferenciasAvisos: {
+          alertasPresupuesto: true,
+          recordatorioDiario: true,
+          cuotas: true,
+          correcciones: true,
+          deudasInternas: true,
+        },
         creadoEn: tsAhora,
       });
     }
@@ -307,6 +314,13 @@ export async function ejecutarUnirseConCodigo(
         diaInicioPendiente: null,
         horaRecordatorio: null,
         fcmTokens: [],
+        preferenciasAvisos: {
+          alertasPresupuesto: true,
+          recordatorioDiario: true,
+          cuotas: true,
+          correcciones: true,
+          deudasInternas: true,
+        },
         creadoEn: tsAhora,
       });
     }

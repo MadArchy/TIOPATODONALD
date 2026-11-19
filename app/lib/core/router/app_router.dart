@@ -9,6 +9,7 @@ import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/perfil_provisional_screen.dart';
 import '../../features/auth/presentation/recuperar_password_screen.dart';
 import '../../features/auth/presentation/registro_screen.dart';
+import '../../features/onboarding/presentation/onboarding_screen.dart';
 import '../../features/hogar/presentation/escanear_qr_screen.dart';
 import '../../features/hogar/presentation/miembros_qr_screen.dart';
 import '../../features/hogar/presentation/sin_hogar_screen.dart';
@@ -39,9 +40,15 @@ String? evaluarRedireccionRouter({
   required Usuario? usuario,
   required bool cargandoEstado,
   bool? tienePresupuestoVigente,
+  bool? onboardingVisto,
 }) {
   if (cargandoEstado) {
     return null;
+  }
+
+  if (onboardingVisto == false) {
+    if (ubicacionActual == '/onboarding') return null;
+    return '/onboarding';
   }
 
   const rutasPublicas = <String>{
@@ -49,6 +56,7 @@ String? evaluarRedireccionRouter({
     '/login',
     '/registro',
     '/recuperar-password',
+    '/onboarding',
   };
 
   if (uid == null) {
@@ -109,6 +117,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   final uidAsync = ref.watch(authUidProvider);
   final usuarioAsync = ref.watch(usuarioActualProvider);
   final presupuestoAsync = ref.watch(presupuestoVigenteProvider);
+  final onboardingAsync = ref.watch(onboardingVistoProvider);
 
   return GoRouter(
     initialLocation: '/bienvenida',
@@ -116,6 +125,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final tieneHogar = usuarioAsync.value?.hogarId != null &&
           usuarioAsync.value!.hogarId!.trim().isNotEmpty;
       final cargando = uidAsync.isLoading ||
+          onboardingAsync.isLoading ||
           (uidAsync.value != null && usuarioAsync.isLoading) ||
           (tieneHogar && presupuestoAsync.isLoading);
 
@@ -126,9 +136,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         cargandoEstado: cargando,
         tienePresupuestoVigente:
             tieneHogar ? (presupuestoAsync.value != null) : null,
+        onboardingVisto: onboardingAsync.value,
       );
     },
     routes: [
+      GoRoute(
+        path: '/onboarding',
+        name: 'onboarding',
+        builder: (context, state) => const OnboardingScreen(),
+      ),
       GoRoute(
         path: '/bienvenida',
         name: 'bienvenida',
