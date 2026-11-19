@@ -32,6 +32,13 @@ Una entrada por slice cerrado: fecha, slice, qué se hizo, decisiones tomadas.
   - Reglas de `usuarios/{uid}`: solo el propio `uid` lee y escribe; `create` exige `hogarId == null` y `diaInicioPeriodo` ∈ [1, 28]; `update` prohíbe modificar `hogarId` y `creadoEn`; `delete: if false`.
   - Tests con emulador en `functions/test/rules/usuarios.rules.test.ts`.
 
+## 2026-11-18 — Slice 3: Movimientos
+- **Modelos y core (`app/`)**: `Movimiento`, `GastoFijo` (freezed); `categorias.dart` (ids, labels, íconos, reducibles); `movimientos_validacion.dart` (creación, edición menor < 24 h, día esperado de gasto fijo).
+- **Repositorio y offline**: `MovimientosRepository` (CRUD movimientos/gastos fijos, streams, edición menor); `ColaFotosService` (disco + reintento al reconectar) con `image_picker` / `flutter_image_compress` (~300 KB) → Storage `recibos/{h}/{movId}.jpg`.
+- **UI**: FAB "+" y hoja `NuevoMovimientoSheet` (Gasto/Ingreso, monto, categorías, más opciones); `HistorialMovimientosScreen` (Míos/hogar, categoría, períodos anteriores solo lectura); `DetalleMovimientoScreen` (edición menor); `GastosFijosScreen` + tarjeta en Inicio el día esperado; link en Perfil; rutas `/historial`, `/movimiento/:id`, `/gastos-fijos`.
+- **Firebase**: rules de `movimientos` (create, edición menor, completar `fotoPath`, delete false) y `gastosFijos`; `storage.rules` para recibos; Function `alEditarMovimiento` escribe auditoría `edicionMenor`; índices compuestos de movimientos.
+- **Tests**: unitarios de categorías/validación; smoke UI del sheet; rules (create ok/fail uid/período, delete fail, update <24h ok / 25h fail, gastos fijos).
+
 ## 2026-11-18 — Slice 2: Hogar e invitación por QR
 - **Lógica pura de períodos (`app/lib/core/periodo.dart`)**:
   - `Periodo periodoDe(DateTime instante, int diaInicio)`, `diasTranscurridos` y `diasRestantes` en zona horaria `America/Bogota` (UTC-5).

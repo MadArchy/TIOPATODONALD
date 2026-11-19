@@ -2,7 +2,28 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    // Slice 0: Niega todo por defecto hasta el slice de movimientos / recibos.
+    function estaAutenticado() {
+      return request.auth != null;
+    }
+
+    function esMiembroActivoStorage(hogarId) {
+      return estaAutenticado() &&
+        firestore.exists(/databases/(default)/documents/hogares/$(hogarId)/miembros/$(request.auth.uid)) &&
+        firestore.get(/databases/(default)/documents/hogares/$(hogarId)/miembros/$(request.auth.uid)).data.estado == 'activo';
+    }
+
+    // Slice 3 — recibos de movimientos
+    match /recibos/{hogarId}/{movimientoId} {
+      allow read: if esMiembroActivoStorage(hogarId);
+
+      allow write: if esMiembroActivoStorage(hogarId) &&
+        movimientoId.matches('.*\\.jpg$') &&
+        request.resource.contentType.matches('image/.*') &&
+        request.resource.size < 1 * 1024 * 1024;
+
+      allow delete: if esMiembroActivoStorage(hogarId);
+    }
+
     match /{allPaths=**} {
       allow read, write: if false;
     }

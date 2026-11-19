@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../data/repositories/auth_repository.dart';
@@ -71,6 +72,18 @@ class PerfilProvisionalScreen extends ConsumerWidget {
                   ),
                 ),
               ),
+              const SizedBox(height: 16),
+              if (usuario?.hogarId != null &&
+                  usuario!.hogarId!.trim().isNotEmpty)
+                ListTile(
+                  key: const Key('btn_ir_gastos_fijos'),
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.event_repeat_rounded),
+                  title: const Text('Mis gastos fijos'),
+                  subtitle: const Text('Arriendo, servicios y otros que se repiten'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => context.push('/gastos-fijos'),
+                ),
               const Spacer(),
               OutlinedButton.icon(
                 key: const Key('btn_cerrar_sesion'),

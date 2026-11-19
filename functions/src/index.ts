@@ -1,6 +1,7 @@
 import {getApps, initializeApp} from "firebase-admin/app";
 import {getFirestore} from "firebase-admin/firestore";
 import {onCall, onRequest, CallableRequest} from "firebase-functions/v2/https";
+import {onDocumentUpdated} from "firebase-functions/v2/firestore";
 import {setGlobalOptions} from "firebase-functions/v2";
 import {
   CrearHogarInput,
@@ -16,6 +17,7 @@ import {
   UnirseConCodigoInput,
   UnirseConCodigoResult,
 } from "./hogar";
+import {manejarAlEditarMovimiento} from "./movimientos";
 
 if (getApps().length === 0) {
   initializeApp();
@@ -114,5 +116,18 @@ export const sacarMiembro = onCall(
       request.auth?.uid,
       request.data
     );
+  }
+);
+
+/**
+ * Slice 3: auditoría de edición menor (nota / categoría) en movimientos.
+ */
+export const alEditarMovimiento = onDocumentUpdated(
+  {
+    document: "hogares/{hogarId}/movimientos/{movimientoId}",
+    region: REGION,
+  },
+  async (event) => {
+    await manejarAlEditarMovimiento(getFirestore(), event);
   }
 );

@@ -83,6 +83,34 @@ service cloud.firestore {
         allow delete: if false;
       }
 
+      // Slice 3 — movimientos y gastos fijos
+      match /movimientos/{movimientoId} {
+        allow read: if esMiembroActivo(hogarId);
+
+        allow create: if esMiembroActivo(hogarId) && movimientoCreateOk();
+
+        allow update: if esMiembroActivo(hogarId) &&
+          (edicionMenorOk() || completarFotoPathOk(hogarId, movimientoId));
+
+        allow delete: if false;
+      }
+
+      match /gastosFijos/{gastoFijoId} {
+        allow read: if esMiembroActivo(hogarId);
+
+        allow create: if esMiembroActivo(hogarId) &&
+          request.resource.data.uid == request.auth.uid &&
+          gastoFijoCamposOk(request.resource.data);
+
+        allow update: if esMiembroActivo(hogarId) &&
+          resource.data.uid == request.auth.uid &&
+          request.resource.data.uid == request.auth.uid &&
+          gastoFijoCamposOk(request.resource.data);
+
+        allow delete: if esMiembroActivo(hogarId) &&
+          resource.data.uid == request.auth.uid;
+      }
+
       match /auditoria/{auditoriaId} {
         allow read: if esMiembroActivo(hogarId);
         allow write: if false;
@@ -97,6 +125,105 @@ service cloud.firestore {
         allow read: if esMiembroActivo(hogarId);
         allow write: if false;
       }
+    }
+
+    function categoriasGasto() {
+      return ['alimentacion', 'servicios', 'transporte', 'vivienda',
+        'salud', 'educacion', 'ocio', 'otros'];
+    }
+
+    function categoriasIngreso() {
+      return ['salario', 'otros_ingreso'];
+    }
+
+    function categoriaMovimientoOk(tipo, categoria) {
+      return (tipo == 'gasto' && categoria in categoriasGasto()) ||
+        (tipo == 'ingreso' && categoria in categoriasIngreso()) ||
+        (tipo == 'pagoCuota' && categoria == null);
+    }
+
+    function periodoIdFormatoOk(periodoId) {
+      return periodoId is string &&
+        periodoId.size() == 10 &&
+        periodoId[4:5] == '-' &&
+        periodoId[7:8] == '-';
+    }
+
+    function diaInicioUsuario() {
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid))
+        .data.diaInicioPeriodo;
+    }
+
+    // periodoId debe empezar el día D del usuario; fecha no futura y dentro de
+    // ventana offline (~62 días = período + período anterior + margen 48 h).
+    function periodoMovimientoOk(fecha, periodoId) {
+      return periodoIdFormatoOk(periodoId) &&
+        int(periodoId[8:10]) == diaInicioUsuario() &&
+        fecha is timestamp &&
+        fecha <= request.time &&
+        fecha > request.time - duration.value(62, 'd');
+    }
+
+    function movimientoCreateOk() {
+      let d = request.resource.data;
+      return d.uid == request.auth.uid &&
+        d.tipo in ['gasto', 'ingreso', 'pagoCuota'] &&
+        d.monto is int &&
+        d.monto > 0 &&
+        categoriaMovimientoOk(d.tipo, d.categoria) &&
+        (d.tipo != 'pagoCuota' || (d.deudaId is string && d.deudaId.size() > 0)) &&
+        (d.tipo == 'pagoCuota' || d.deudaId == null) &&
+        periodoMovimientoOk(d.fecha, d.periodoId) &&
+        d.estado == 'activo' &&
+        d.creadoEn == request.time &&
+        d.saldoAplicado == false &&
+        (d.origen in ['formulario', 'chat', 'gastoFijo']) &&
+        (d.nota is string && d.nota.size() <= 200) &&
+        (d.fotoPath == null || d.fotoPath is string) &&
+        (d.editadoEn == null) &&
+        (d.gastoFijoId == null || d.gastoFijoId is string);
+    }
+
+    function edicionMenorOk() {
+      let before = resource.data;
+      let after = request.resource.data;
+      return before.uid == request.auth.uid &&
+        before.estado == 'activo' &&
+        request.time < before.creadoEn + duration.value(24, 'h') &&
+        after.diff(before).affectedKeys().hasOnly(['nota', 'categoria', 'editadoEn']) &&
+        after.nota is string &&
+        after.nota.size() <= 200 &&
+        after.editadoEn == request.time &&
+        (
+          !after.diff(before).affectedKeys().hasAny(['categoria']) ||
+          (before.tipo == 'gasto' && after.categoria in categoriasGasto())
+        ) &&
+        after.tipo == before.tipo &&
+        after.monto == before.monto &&
+        after.uid == before.uid &&
+        after.periodoId == before.periodoId &&
+        after.estado == before.estado;
+    }
+
+    function completarFotoPathOk(hogarId, movimientoId) {
+      let before = resource.data;
+      let after = request.resource.data;
+      return before.uid == request.auth.uid &&
+        before.fotoPath == null &&
+        after.diff(before).affectedKeys().hasOnly(['fotoPath']) &&
+        after.fotoPath == 'recibos/' + hogarId + '/' + movimientoId + '.jpg';
+    }
+
+    function gastoFijoCamposOk(d) {
+      return d.nombre is string &&
+        d.nombre.size() > 0 &&
+        d.monto is int &&
+        d.monto > 0 &&
+        d.categoria in categoriasGasto() &&
+        d.diaEsperado is int &&
+        d.diaEsperado >= 1 &&
+        d.diaEsperado <= 31 &&
+        d.activo is bool;
     }
 
     // Niega todo lo demás por defecto hasta abrir cada colección en sus slices correspondientes.

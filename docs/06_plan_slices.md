@@ -9,7 +9,7 @@ un desarrollador con apoyo de agentes; ajustar con la realidad.
 | 0 | Base del proyecto | `prompts/slice-00-base.md` | [x] | 0,5 |
 | 1 | Auth | `prompts/slice-01-auth.md` | [x] | 0,5 |
 | 2 | Hogar / QR | `prompts/slice-02-hogar-qr.md` | [x] | 1 |
-| 3 | Movimientos | `prompts/slice-03-movimientos.md` | [ ] | 1,5 |
+| 3 | Movimientos | `prompts/slice-03-movimientos.md` | [x] | 1,5 |
 | 4 | Home y presupuesto | `prompts/slice-04-home.md` | [ ] | 2 |
 | 5 | Deudas externas | `prompts/slice-05-deudas.md` | [ ] | 1 |
 | 6 | Deudas entre miembros | `prompts/slice-06-deudas-internas.md` | [ ] | 1 |

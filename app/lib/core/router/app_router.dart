@@ -14,13 +14,18 @@ import '../../features/hogar/presentation/miembros_qr_screen.dart';
 import '../../features/hogar/presentation/sin_hogar_screen.dart';
 import '../../features/hogar/presentation/unirse_deeplink_screen.dart';
 import '../../features/home/presentation/inicio_provisional_screen.dart';
+import '../../features/movimientos/presentation/detalle_movimiento_screen.dart';
+import '../../features/movimientos/presentation/gastos_fijos_screen.dart';
+import '../../features/movimientos/presentation/historial_movimientos_screen.dart';
 import '../../features/presupuesto/presentation/configurar_presupuesto_periodo_screen.dart';
 
 /// Función pura que evalúa la guarda de navegación:
 /// - Sin sesión (`uid == null`) → `/bienvenida` (permitiendo `/login`, `/registro`, `/recuperar-password`)
 /// - Con sesión y `hogarId == null` → `/sin-hogar` (permitiendo `/escanear-qr`, `/unirse`, `/perfil`)
 /// - Con sesión, `hogarId != null` y sin presupuesto del período → `/configurar-periodo` (permitiendo `/miembros-qr`, `/perfil`)
-/// - Con sesión, `hogarId != null` y con presupuesto → `/inicio` (permitiendo `/configurar-periodo`, `/miembros-qr`, `/unirse`, `/perfil`)
+/// - Con sesión, `hogarId != null` y con presupuesto → `/inicio` (permitiendo
+///   `/configurar-periodo`, `/miembros-qr`, `/unirse`, `/perfil`, `/historial`,
+///   `/movimiento/:id`, `/gastos-fijos`)
 String? evaluarRedireccionRouter({
   required String ubicacionActual,
   required String? uid,
@@ -77,8 +82,11 @@ String? evaluarRedireccionRouter({
     '/inicio',
     '/configurar-periodo',
     '/miembros-qr',
+    '/historial',
+    '/gastos-fijos',
   };
-  if (rutasConHogar.contains(ubicacionActual)) {
+  if (rutasConHogar.contains(ubicacionActual) ||
+      ubicacionActual.startsWith('/movimiento/')) {
     return null;
   }
   return '/inicio';
@@ -162,6 +170,23 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/inicio',
         name: 'inicio',
         builder: (context, state) => const InicioProvisionalScreen(),
+      ),
+      GoRoute(
+        path: '/historial',
+        name: 'historial',
+        builder: (context, state) => const HistorialMovimientosScreen(),
+      ),
+      GoRoute(
+        path: '/movimiento/:id',
+        name: 'movimiento',
+        builder: (context, state) => DetalleMovimientoScreen(
+          movimientoId: state.pathParameters['id'] ?? '',
+        ),
+      ),
+      GoRoute(
+        path: '/gastos-fijos',
+        name: 'gastos-fijos',
+        builder: (context, state) => const GastosFijosScreen(),
       ),
       GoRoute(
         path: '/perfil',
