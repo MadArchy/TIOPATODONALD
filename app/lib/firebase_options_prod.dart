@@ -9,16 +9,14 @@ import 'package:flutter/foundation.dart'
 class DefaultFirebaseOptionsProd {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
-      throw UnsupportedError(
-        'DefaultFirebaseOptionsProd no está configurado para web.',
-      );
+      return web;
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
         return android;
       default:
         throw UnsupportedError(
-          'DefaultFirebaseOptionsProd solo soporta Android en el MVP.',
+          'DefaultFirebaseOptionsProd solo soporta Android y Web.',
         );
     }
   }
@@ -29,5 +27,14 @@ class DefaultFirebaseOptionsProd {
     messagingSenderId: '497215713486',
     projectId: 'pato-donald-prod',
     storageBucket: 'pato-donald-prod.firebasestorage.app',
+  );
+
+  static const FirebaseOptions web = FirebaseOptions(
+    apiKey: 'AIzaSyAM__RRGONAzxlMFZ0v047fcyUBIjkIx98',
+    appId: '1:497215713486:web:5614fba382e33167e3609f',
+    messagingSenderId: '497215713486',
+    projectId: 'pato-donald-prod',
+    storageBucket: 'pato-donald-prod.firebasestorage.app',
+    authDomain: 'pato-donald-prod.firebaseapp.com',
   );
 }
