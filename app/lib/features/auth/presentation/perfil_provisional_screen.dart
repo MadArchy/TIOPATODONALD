@@ -160,7 +160,7 @@ class _PerfilProvisionalScreenState
         Theme.of(context).extension<SemaforoColors>() ?? SemaforoColors.light;
 
     if (!_montoInicializado && presupuesto != null) {
-      _montoController.text = presupuesto.monto.toString();
+      _montoController.text = formatCopSinSimbolo(presupuesto.monto);
       _montoInicializado = true;
     }
 
@@ -258,8 +258,10 @@ class _PerfilProvisionalScreenState
                   controller: _montoController,
                   enabled: !cargando,
                   keyboardType: TextInputType.number,
+                  inputFormatters: const [CopInputFormatter()],
                   decoration: const InputDecoration(
                     labelText: 'Presupuesto de este período (COP)',
+                    prefixText: '\$ ',
                     prefixIcon: Icon(Icons.payments_outlined),
                   ),
                 ),

@@ -135,4 +135,23 @@ describe("Firestore Security Rules — Slice 1: usuarios/{uid}", () => {
       })
     );
   });
+
+  it("tras periodoConfigurado: true permite pedir diaInicioPendiente desde Perfil pero bloquea cambiar diaInicioPeriodo directo", async () => {
+    const db = testEnv.authenticatedContext("uid-1").firestore();
+    const ref = doc(db, "usuarios/uid-1");
+    await assertSucceeds(setDoc(ref, datosUsuarioBase));
+
+    // Configuración inicial permitida una sola vez
+    await assertSucceeds(
+      updateDoc(ref, {diaInicioPeriodo: 15, periodoConfigurado: true})
+    );
+
+    // Desde Perfil: pedir cambio vía diaInicioPendiente SÍ está permitido
+    await assertSucceeds(updateDoc(ref, {diaInicioPendiente: 5}));
+    await assertSucceeds(updateDoc(ref, {diaInicioPendiente: null}));
+
+    // Cambiar diaInicioPeriodo directo tras configurar queda bloqueado
+    await assertFails(updateDoc(ref, {diaInicioPeriodo: 5}));
+    await assertFails(updateDoc(ref, {periodoConfigurado: false}));
+  });
 });

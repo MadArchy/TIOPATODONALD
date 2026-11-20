@@ -84,4 +84,27 @@ void main() {
       expect(() => periodoDe(DateTime(2026, 11, 18), 29), throwsArgumentError);
     });
   });
+
+  group('Formato humano de períodos y fechas (C3/C4)', () {
+    test('formatearRangoPeriodo y formatearRangoDesdePeriodoId', () {
+      final p15 = periodoDe(DateTime(2026, 11, 25), 15);
+      expect(formatearRangoPeriodo(p15), '15 nov – 14 dic');
+      expect(formatearRangoDesdePeriodoId('2026-11-15'), '15 nov – 14 dic');
+      expect(formatearRangoDesdePeriodoId('2026-11-01'), '1 nov – 30 nov');
+    });
+
+    test('formatearFechaHumana devuelve hoy, ayer, día corto o fecha corta', () {
+      final ahora = DateTime(2026, 11, 19, 15, 0);
+      expect(formatearFechaHumana(DateTime(2026, 11, 19, 9, 0), ahora), 'hoy');
+      expect(formatearFechaHumana(DateTime(2026, 11, 18, 20, 0), ahora), 'ayer');
+      expect(
+        formatearFechaHumana(DateTime(2026, 11, 16, 10, 0), ahora),
+        'lun 16',
+      );
+      expect(
+        formatearFechaHumana(DateTime(2026, 11, 2, 10, 0), ahora),
+        '2 nov',
+      );
+    });
+  });
 }

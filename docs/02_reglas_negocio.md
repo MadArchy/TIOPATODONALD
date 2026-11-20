@@ -9,7 +9,7 @@ Si algo no está aquí, pregunta antes de inventarlo.
 - Período = desde el día D de un mes (00:00 America/Bogota) hasta el día D−1 del mes siguiente (23:59:59.999).
   - D = 15 → 15 nov – 14 dic. D = 1 → mes calendario.
 - `periodoId` = fecha de inicio en texto `YYYY-MM-DD`.
-- Cambiar D: se guarda en `diaInicioPendiente` y aplica cuando empieza el siguiente período. Nunca parte ni reabre el actual.
+- Cambiar D: se guarda en `diaInicioPendiente` y nunca parte ni reabre el período actual. Al cerrar el período actual, si hoy aún no es el día D nuevo, corre un **período puente** desde el cierre hasta el día D nuevo (conservando el presupuesto vigente y aceptando offline el D anterior durante la transición); al llegar el día D nuevo (00:30 America/Bogota), el servidor cierra el puente, actualiza `diaInicioPeriodo = D nuevo`, limpia `diaInicioPendiente` y copia el presupuesto vigente al nuevo período si aún no existe.
 - Funciones requeridas en `core/periodo.dart`:
   - `Periodo periodoDe(DateTime instante, int diaInicio)` → inicio, fin, `periodoId`, días totales
   - `int diasTranscurridos(Periodo p, DateTime hoy)` (cuenta hoy)

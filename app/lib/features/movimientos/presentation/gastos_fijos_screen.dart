@@ -144,7 +144,7 @@ class _FormularioGastoFijoState extends ConsumerState<_FormularioGastoFijo> {
     final e = widget.existente;
     _nombreCtrl = TextEditingController(text: e?.nombre ?? '');
     _montoCtrl = TextEditingController(
-      text: e != null ? e.monto.toString() : '',
+      text: e != null ? formatCopSinSimbolo(e.monto) : '',
     );
     _diaCtrl = TextEditingController(
       text: e != null ? e.diaEsperado.toString() : '1',
@@ -254,8 +254,10 @@ class _FormularioGastoFijoState extends ConsumerState<_FormularioGastoFijo> {
               key: const Key('campo_monto_gasto_fijo'),
               controller: _montoCtrl,
               keyboardType: TextInputType.number,
+              inputFormatters: const [CopInputFormatter()],
               decoration: const InputDecoration(
                 labelText: 'Monto',
+                prefixText: '\$ ',
                 border: OutlineInputBorder(),
               ),
             ),

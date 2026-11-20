@@ -36,6 +36,10 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    buildFeatures {
+        resValues = true
+    }
+
     defaultConfig {
         applicationId = "co.patodonald.app"
         minSdk = maxOf(flutter.minSdkVersion, 23)

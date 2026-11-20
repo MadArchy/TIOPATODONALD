@@ -136,8 +136,10 @@ class _CrearDeudaInternaSheetState
               key: const Key('campo_monto_interno'),
               controller: _montoCtrl,
               keyboardType: TextInputType.number,
+              inputFormatters: const [CopInputFormatter()],
               decoration: const InputDecoration(
                 labelText: 'Monto',
+                prefixText: '\$ ',
                 border: OutlineInputBorder(),
               ),
             ),

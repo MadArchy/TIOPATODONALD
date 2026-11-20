@@ -165,3 +165,61 @@ int diasRestantes(Periodo p, DateTime hoy) {
   }
   return finCal.difference(hoyCal).inDays + 1;
 }
+
+const List<String> _mesesCortos = <String>[
+  '',
+  'ene',
+  'feb',
+  'mar',
+  'abr',
+  'may',
+  'jun',
+  'jul',
+  'ago',
+  'sep',
+  'oct',
+  'nov',
+  'dic',
+];
+
+const List<String> _diasSemanaCortos = <String>[
+  '',
+  'lun',
+  'mar',
+  'mié',
+  'jue',
+  'vie',
+  'sáb',
+  'dom',
+];
+
+/// Formatea un [Periodo] en texto humano: `"15 nov – 14 dic"`.
+String formatearRangoPeriodo(Periodo p) {
+  final iMes = _mesesCortos[p.inicio.month];
+  final fMes = _mesesCortos[p.fin.month];
+  return '${p.inicio.day} $iMes – ${p.fin.day} $fMes';
+}
+
+/// Convierte un `periodoId` (`YYYY-MM-DD`) a texto humano `"15 nov – 14 dic"`.
+String formatearRangoDesdePeriodoId(String periodoId) {
+  final parsed = DateTime.tryParse(periodoId);
+  if (parsed == null) return periodoId;
+  final dia = parsed.day.clamp(1, 28);
+  return formatearRangoPeriodo(periodoDe(parsed, dia));
+}
+
+/// Formatea una fecha de movimiento de forma humana respecto a [ahora]:
+/// `"hoy"`, `"ayer"`, `"lun 17"` (últimos 6 días) o `"15 nov"`.
+String formatearFechaHumana(DateTime fecha, DateTime ahora) {
+  final f = aHoraBogota(fecha);
+  final h = aHoraBogota(ahora);
+  final fCal = DateTime.utc(f.year, f.month, f.day);
+  final hCal = DateTime.utc(h.year, h.month, h.day);
+  final diff = hCal.difference(fCal).inDays;
+  if (diff == 0) return 'hoy';
+  if (diff == 1) return 'ayer';
+  if (diff > 1 && diff <= 6) {
+    return '${_diasSemanaCortos[f.weekday]} ${f.day}';
+  }
+  return '${f.day} ${_mesesCortos[f.month]}';
+}

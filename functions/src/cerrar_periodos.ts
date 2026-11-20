@@ -21,8 +21,14 @@ export interface CerrarPeriodosResultado {
 
 /**
  * Job diario (~00:30 América/Bogotá):
- * - Si un miembro está en el día 1 de su período, genera el resumen del período anterior.
- * - Aplica `diaInicioPendiente` → `diaInicioPeriodo` y limpia el pendiente.
+ * - Si un miembro está en el día 1 de su período actual, genera el resumen del período anterior.
+ * - Si tiene `diaInicioPendiente = Dnuevo`:
+ *   - Al cerrar el período viejo (día Dviejo), si hoy aún no es Dnuevo, inicia un **período puente**
+ *     (`enPuenteHastaDia: Dnuevo`) copiando el presupuesto vigente para no bloquear la app.
+ *   - Al llegar el día Dnuevo (`hoyDia === Dnuevo`) estando en puente (o si hoy mismo coincide con el cierre),
+ *     cierra el período puente, aplica `diaInicioPeriodo = Dnuevo`, guarda `diaInicioAnterior = Dviejo`
+ *     (para tolerar escrituras offline en transición), limpia `diaInicioPendiente` y asegura el
+ *     presupuesto del nuevo período copiando el vigente si aún no existe.
  */
 export async function ejecutarCerrarPeriodos(
   db: Firestore,
@@ -31,6 +37,10 @@ export async function ejecutarCerrarPeriodos(
   const hogaresSnap = await db.collection("hogares").get();
   let resumenesCreados = 0;
   let diasPendientesAplicados = 0;
+
+  // Día calendario actual en América/Bogotá (UTC-5, sin horario de verano).
+  const bogota = new Date(now.getTime() - 5 * 3600_000);
+  const hoyDiaBogota = bogota.getUTCDate();
 
   for (const hogarDoc of hogaresSnap.docs) {
     const hogarId = hogarDoc.id;
@@ -56,11 +66,12 @@ export async function ejecutarCerrarPeriodos(
         typeof usuario.diaInicioPendiente === "number"
           ? usuario.diaInicioPendiente
           : null;
+      const enPuente = usuario.enPuentePeriodo === true;
 
       const periodoActual = periodoDe(now, diaInicio);
       const transcurridos = diasTranscurridos(periodoActual, now);
 
-      // Solo el primer día del nuevo período genera el cierre del anterior.
+      // 1) Primer día del período según diaInicio actual: cerrar el anterior.
       if (transcurridos === 1) {
         const anterior = periodoAnteriorDe(periodoActual);
         const creado = await asegurarResumenPeriodo({
@@ -70,18 +81,78 @@ export async function ejecutarCerrarPeriodos(
           periodoId: anterior.periodoId,
         });
         if (creado) resumenesCreados += 1;
+
+        if (
+          pendiente != null &&
+          pendiente >= 1 &&
+          pendiente <= 28 &&
+          pendiente !== diaInicio
+        ) {
+          if (hoyDiaBogota === pendiente) {
+            // Coincide justo hoy con el día nuevo: aplicar de inmediato.
+            await usuarioRef.update({
+              diaInicioPeriodo: pendiente,
+              diaInicioAnterior: diaInicio,
+              diaInicioPendiente: null,
+              enPuentePeriodo: false,
+            });
+            const nuevoPeriodo = periodoDe(now, pendiente);
+            await asegurarPresupuestoCopiado({
+              db,
+              hogarId,
+              uid,
+              desdePeriodoId: anterior.periodoId,
+              haciaPeriodoId: nuevoPeriodo.periodoId,
+            });
+            diasPendientesAplicados += 1;
+          } else {
+            // Arranca período puente (Dviejo .. Dnuevo-1) con el presupuesto copiado.
+            await usuarioRef.update({
+              enPuentePeriodo: true,
+            });
+            await asegurarPresupuestoCopiado({
+              db,
+              hogarId,
+              uid,
+              desdePeriodoId: anterior.periodoId,
+              haciaPeriodoId: periodoActual.periodoId,
+            });
+          }
+        }
+        continue;
       }
 
+      // 2) Fin del período puente: hoy es el día D nuevo.
       if (
+        enPuente &&
         pendiente != null &&
         pendiente >= 1 &&
         pendiente <= 28 &&
         pendiente !== diaInicio &&
-        transcurridos === 1
+        hoyDiaBogota === pendiente
       ) {
+        const creado = await asegurarResumenPeriodo({
+          db,
+          hogarId,
+          uid,
+          periodoId: periodoActual.periodoId,
+        });
+        if (creado) resumenesCreados += 1;
+
         await usuarioRef.update({
           diaInicioPeriodo: pendiente,
+          diaInicioAnterior: diaInicio,
           diaInicioPendiente: null,
+          enPuentePeriodo: false,
+        });
+
+        const nuevoPeriodo = periodoDe(now, pendiente);
+        await asegurarPresupuestoCopiado({
+          db,
+          hogarId,
+          uid,
+          desdePeriodoId: periodoActual.periodoId,
+          haciaPeriodoId: nuevoPeriodo.periodoId,
         });
         diasPendientesAplicados += 1;
       }
@@ -93,6 +164,32 @@ export async function ejecutarCerrarPeriodos(
     resumenesCreados,
     diasPendientesAplicados,
   };
+}
+
+async function asegurarPresupuestoCopiado(args: {
+  db: Firestore;
+  hogarId: string;
+  uid: string;
+  desdePeriodoId: string;
+  haciaPeriodoId: string;
+}): Promise<void> {
+  const {db, hogarId, uid, desdePeriodoId, haciaPeriodoId} = args;
+  const col = db.collection("hogares").doc(hogarId).collection("presupuestos");
+  const destinoRef = col.doc(`${uid}_${haciaPeriodoId}`);
+  const destinoSnap = await destinoRef.get();
+  if (destinoSnap.exists) return;
+
+  const origenSnap = await col.doc(`${uid}_${desdePeriodoId}`).get();
+  const monto = origenSnap.data()?.monto;
+  if (typeof monto === "number" && Number.isInteger(monto) && monto > 0) {
+    await destinoRef.set({
+      uid,
+      periodoId: haciaPeriodoId,
+      monto,
+      alertasEnviadas: [],
+      actualizadoEn: FieldValue.serverTimestamp(),
+    });
+  }
 }
 
 async function asegurarResumenPeriodo(args: {

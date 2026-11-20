@@ -127,9 +127,11 @@ class _ConfigurarPresupuestoPeriodoScreenState
                       controller: _montoController,
                       enabled: !cargando,
                       keyboardType: TextInputType.number,
+                      inputFormatters: const [CopInputFormatter()],
                       decoration: const InputDecoration(
                         labelText: 'Tu presupuesto de gasto (COP)',
                         hintText: 'Ejemplo: 2.500.000',
+                        prefixText: '\$ ',
                         prefixIcon: Icon(Icons.payments_outlined),
                       ),
                       validator: (valor) {

@@ -234,12 +234,23 @@ export async function ejecutarResolverCorreccion(
         "No encontramos al dueño del movimiento."
       );
     }
-    const diaInicioDueno = Number(usuarioDuenoSnap.data()?.diaInicioPeriodo ?? 1);
+    const diaInicioActualDueno = Number(
+      usuarioDuenoSnap.data()?.diaInicioPeriodo ?? 1
+    );
     const periodoId = String(mov.periodoId ?? "");
+    // B5: calcular el plazo usando el día de inicio del propio periodoId (últimos 2 dígitos),
+    // para que un cambio posterior de día de inicio del dueño no invalide correcciones pasadas.
+    const diaDelPeriodoId = /^\d{4}-\d{2}-\d{2}$/.test(periodoId) ?
+      Number(periodoId.slice(8, 10)) :
+      diaInicioActualDueno;
+    const diaInicioParaPlazo =
+      diaDelPeriodoId >= 1 && diaDelPeriodoId <= 28 ?
+        diaDelPeriodoId :
+        diaInicioActualDueno;
     if (
       !dentroDePlazoCorreccion({
         periodoIdMovimiento: periodoId,
-        diaInicioDueno,
+        diaInicioDueno: diaInicioParaPlazo,
         ahora,
       })
     ) {
@@ -294,11 +305,11 @@ export async function ejecutarResolverCorreccion(
       if (f instanceof Timestamp) {
         update.fecha = f;
         const fechaDate = f.toDate();
-        update.periodoId = periodoDe(fechaDate, diaInicioDueno).periodoId;
+        update.periodoId = periodoDe(fechaDate, diaInicioParaPlazo).periodoId;
       } else if (typeof f === "string") {
         const fechaDate = new Date(f);
         update.fecha = Timestamp.fromDate(fechaDate);
-        update.periodoId = periodoDe(fechaDate, diaInicioDueno).periodoId;
+        update.periodoId = periodoDe(fechaDate, diaInicioParaPlazo).periodoId;
       } else {
         throw new HttpsError("invalid-argument", "Fecha de corrección inválida.");
       }
@@ -316,6 +327,18 @@ export async function ejecutarResolverCorreccion(
         (update.deudaId as string | null) :
         deudaIdAntes;
 
+    const categoriasGastoValidas = new Set([
+      "alimentacion",
+      "servicios",
+      "transporte",
+      "vivienda",
+      "salud",
+      "educacion",
+      "ocio",
+      "otros",
+    ]);
+    const categoriasIngresoValidas = new Set(["salario", "otros_ingreso"]);
+
     if (tipoDespues === "pagoCuota") {
       update.categoria = null;
       categoriaDespues = null;
@@ -332,9 +355,30 @@ export async function ejecutarResolverCorreccion(
         throw new HttpsError("not-found", "No encontramos esa deuda.");
       }
       update.deudaId = deudaIdDespues;
-    } else {
+    } else if (tipoDespues === "gasto") {
+      // B6: exigir categoría válida de gasto (incluye reclasificar pagoCuota → gasto).
+      if (!categoriaDespues || !categoriasGastoValidas.has(categoriaDespues)) {
+        throw new HttpsError(
+          "invalid-argument",
+          "Elige una categoría válida para el gasto."
+        );
+      }
+      update.categoria = categoriaDespues;
       update.deudaId = null;
       deudaIdDespues = null;
+    } else if (tipoDespues === "ingreso") {
+      // B6: exigir categoría válida de ingreso (incluye reclasificar gasto → ingreso).
+      if (!categoriaDespues || !categoriasIngresoValidas.has(categoriaDespues)) {
+        throw new HttpsError(
+          "invalid-argument",
+          "Elige una categoría válida para el ingreso."
+        );
+      }
+      update.categoria = categoriaDespues;
+      update.deudaId = null;
+      deudaIdDespues = null;
+    } else {
+      throw new HttpsError("invalid-argument", "Tipo de movimiento inválido.");
     }
 
     const montoDespues = Number(update.monto ?? montoAntes);

@@ -285,10 +285,10 @@ class _FormularioDeudaState extends ConsumerState<_FormularioDeuda> {
     final e = widget.existente;
     _entidadCtrl = TextEditingController(text: e?.entidad ?? '');
     _saldoCtrl = TextEditingController(
-      text: e == null ? '' : e.saldoInicial.toString(),
+      text: e == null ? '' : formatCopSinSimbolo(e.saldoInicial),
     );
     _cuotaCtrl = TextEditingController(
-      text: e == null ? '' : e.cuotaMensual.toString(),
+      text: e == null ? '' : formatCopSinSimbolo(e.cuotaMensual),
     );
     _cuotasCtrl = TextEditingController(
       text: e?.numeroCuotas?.toString() ?? '',
@@ -417,8 +417,10 @@ class _FormularioDeudaState extends ConsumerState<_FormularioDeuda> {
                 key: const Key('campo_saldo_inicial_deuda'),
                 controller: _saldoCtrl,
                 keyboardType: TextInputType.number,
+                inputFormatters: const [CopInputFormatter()],
                 decoration: const InputDecoration(
                   labelText: 'Saldo inicial',
+                  prefixText: '\$ ',
                   border: OutlineInputBorder(),
                 ),
               ),
@@ -435,8 +437,10 @@ class _FormularioDeudaState extends ConsumerState<_FormularioDeuda> {
               key: const Key('campo_cuota_mensual_deuda'),
               controller: _cuotaCtrl,
               keyboardType: TextInputType.number,
+              inputFormatters: const [CopInputFormatter()],
               decoration: const InputDecoration(
                 labelText: 'Cuota mensual',
+                prefixText: '\$ ',
                 border: OutlineInputBorder(),
               ),
             ),

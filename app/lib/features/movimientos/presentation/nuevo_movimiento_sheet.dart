@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:material_ui/material_ui.dart';
@@ -82,13 +83,17 @@ class _NuevoMovimientoSheetState extends ConsumerState<NuevoMovimientoSheet> {
     if (fijo != null) {
       _tipo = 'gasto';
       _categoria = fijo.categoria;
-      _montoCtrl = TextEditingController(text: fijo.monto.toString());
+      _montoCtrl = TextEditingController(
+        text: formatCopSinSimbolo(fijo.monto),
+      );
     } else {
       _tipo = widget.prefillTipo ?? 'gasto';
       _categoria = widget.prefillCategoria;
       _deudaId = widget.prefillDeudaId;
       _montoCtrl = TextEditingController(
-        text: widget.prefillMonto?.toString() ?? '',
+        text: widget.prefillMonto != null
+            ? formatCopSinSimbolo(widget.prefillMonto!)
+            : '',
       );
       if (widget.prefillNota != null) {
         _notaCtrl.text = widget.prefillNota!;
@@ -138,7 +143,7 @@ class _NuevoMovimientoSheetState extends ConsumerState<NuevoMovimientoSheet> {
   void _elegirDeuda(Deuda deuda) {
     setState(() {
       _deudaId = deuda.id;
-      _montoCtrl.text = deuda.cuotaMensual.toString();
+      _montoCtrl.text = formatCopSinSimbolo(deuda.cuotaMensual);
     });
   }
 
@@ -197,7 +202,26 @@ class _NuevoMovimientoSheetState extends ConsumerState<NuevoMovimientoSheet> {
             gastoFijoId: fijo?.id,
             fotoLocal: _foto,
           );
-      if (mounted) Navigator.of(context).pop();
+      if (mounted) {
+        final messenger = ScaffoldMessenger.maybeOf(context);
+        Navigator.of(context).pop();
+        var sinRed = false;
+        try {
+          final red = await Connectivity().checkConnectivity();
+          sinRed = red.every((r) => r == ConnectivityResult.none);
+        } catch (_) {
+          sinRed = false;
+        }
+        messenger?.showSnackBar(
+          SnackBar(
+            content: Text(
+              sinRed
+                  ? 'Guardado. Se enviará cuando tengas internet.'
+                  : 'Guardado.',
+            ),
+          ),
+        );
+      }
     } on MovimientosException catch (e) {
       if (mounted) setState(() => _error = e.mensaje);
     } catch (_) {
@@ -273,6 +297,7 @@ class _NuevoMovimientoSheetState extends ConsumerState<NuevoMovimientoSheet> {
               key: const Key('campo_monto_movimiento'),
               controller: _montoCtrl,
               keyboardType: TextInputType.number,
+              inputFormatters: const [CopInputFormatter()],
               textAlign: TextAlign.center,
               style: theme.textTheme.displaySmall?.copyWith(
                 fontWeight: FontWeight.bold,

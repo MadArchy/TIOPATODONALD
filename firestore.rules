@@ -40,7 +40,19 @@ service cloud.firestore {
         (!('hogarId' in request.resource.data) || request.resource.data.hogarId == null);
 
       allow update: if esElPropioUsuario(uid) &&
-        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['hogarId', 'creadoEn']) &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+          'hogarId',
+          'creadoEn',
+          'diaInicioAnterior',
+          'enPuentePeriodo'
+        ]) &&
+        // #10: una vez configurado el período inicial, el cliente no puede cambiar
+        // `diaInicioPeriodo` directo (debe usar `diaInicioPendiente` y esperar a `cerrarPeriodos`).
+        (resource.data.get('periodoConfigurado', false) != true ||
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+            'diaInicioPeriodo',
+            'periodoConfigurado'
+          ])) &&
         request.resource.data.nombre is string &&
         request.resource.data.nombre.size() > 0 &&
         request.resource.data.email is string &&
@@ -217,25 +229,39 @@ service cloud.firestore {
         periodoId[7:8] == '-';
     }
 
-    function diaInicioUsuario() {
-      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid))
-        .data.diaInicioPeriodo;
+    function usuarioActualDoc() {
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data;
     }
 
-    // periodoId debe empezar el día D del usuario; fecha no futura y dentro de
-    // ventana offline (~62 días = período + período anterior + margen 48 h).
+    function diaPeriodoPermitido(diaPeriodo) {
+      let u = usuarioActualDoc();
+      return diaPeriodo == u.diaInicioPeriodo ||
+        ('diaInicioAnterior' in u && u.diaInicioAnterior is int && diaPeriodo == u.diaInicioAnterior);
+    }
+
+    // #8 + B4: periodoId debe corresponder al día de inicio del usuario (o al día
+    // anterior en transición offline), fecha no futura, dentro de ventana offline (62 d),
+    // y caer dentro del rango [inicioPeriodo, inicioPeriodo + 32 días) en America/Bogota.
     function periodoMovimientoOk(fecha, periodoId) {
+      let inicioPeriodoUtc = timestamp.date(
+        int(periodoId[0:4]),
+        int(periodoId[5:7]),
+        int(periodoId[8:10])
+      ) + duration.value(5, 'h');
       return periodoIdFormatoOk(periodoId) &&
-        int(periodoId[8:10]) == diaInicioUsuario() &&
+        diaPeriodoPermitido(int(periodoId[8:10])) &&
         fecha is timestamp &&
         fecha <= request.time &&
-        fecha > request.time - duration.value(62, 'd');
+        fecha > request.time - duration.value(62, 'd') &&
+        fecha >= inicioPeriodoUtc &&
+        fecha < inicioPeriodoUtc + duration.value(32, 'd');
     }
 
     function deudaExiste(hogarId, deudaId) {
       return deudaId is string &&
         deudaId.size() > 0 &&
-        exists(/databases/$(database)/documents/hogares/$(hogarId)/deudas/$(deudaId));
+        exists(/databases/$(database)/documents/hogares/$(hogarId)/deudas/$(deudaId)) &&
+        get(/databases/$(database)/documents/hogares/$(hogarId)/deudas/$(deudaId)).data.estado == 'activa';
     }
 
     function movimientoCreateOk(hogarId) {

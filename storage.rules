@@ -12,12 +12,16 @@ service firebase.storage {
         firestore.get(/databases/(default)/documents/hogares/$(hogarId)/miembros/$(request.auth.uid)).data.estado == 'activo';
     }
 
-    // Slice 3 — recibos de movimientos
-    match /recibos/{hogarId}/{movimientoId} {
+    // Slice 3 + Slice 8.5 (#11) — recibos de movimientos
+    // Solo el dueño del movimiento puede subir/actualizar su recibo; nadie puede borrarlo.
+    match /recibos/{hogarId}/{archivo} {
       allow read: if esMiembroActivoStorage(hogarId);
 
       allow write: if esMiembroActivoStorage(hogarId) &&
-        movimientoId.matches('.*\\.jpg$') &&
+        archivo.matches('.*\\.jpg$') &&
+        archivo.size() > 4 &&
+        firestore.exists(/databases/(default)/documents/hogares/$(hogarId)/movimientos/$(archivo[0:archivo.size() - 4])) &&
+        firestore.get(/databases/(default)/documents/hogares/$(hogarId)/movimientos/$(archivo[0:archivo.size() - 4])).data.uid == request.auth.uid &&
         request.resource.contentType.matches('image/.*') &&
         request.resource.size < 1 * 1024 * 1024;
 

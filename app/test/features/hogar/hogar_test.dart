@@ -415,9 +415,12 @@ void main() {
       expect(fakeHogar.ultimoPresupuestoGuardado?.monto, 3500000);
       expect(fakeHogar.ultimoPresupuestoGuardado?.periodoId, '2026-11-01');
 
-      // 3. Llega a Inicio y abre "Miembros y código QR" (AppBar, siempre visible)
+      // 3. Llega a Inicio con barra inferior, entra a la pestaña "Hogar" y abre "Miembros y código QR"
       expect(find.text('Familia Pato'), findsWidgets);
-      await tester.tap(find.byKey(const Key('btn_ir_a_miembros_desde_inicio')));
+      expect(find.byKey(const Key('barra_navegacion_inferior')), findsOneWidget);
+      await tester.tap(find.text('Hogar'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('hogar_item_miembros_qr')));
       await tester.pumpAndSettle();
 
       expect(find.text('Invitar a un familiar con código QR'), findsOneWidget);

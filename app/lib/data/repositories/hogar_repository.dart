@@ -301,6 +301,7 @@ class FirebaseHogarRepository implements HogarRepository {
 
     batch.update(usuarioRef, <String, dynamic>{
       'diaInicioPeriodo': diaInicioPeriodo,
+      'periodoConfigurado': true,
     });
 
     batch.set(

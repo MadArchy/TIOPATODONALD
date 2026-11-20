@@ -31,7 +31,9 @@ class _RegistrarPagoInternoSheetState
   @override
   void initState() {
     super.initState();
-    _montoCtrl = TextEditingController(text: widget.saldo.toString());
+    _montoCtrl = TextEditingController(
+      text: formatCopSinSimbolo(widget.saldo),
+    );
   }
 
   @override
@@ -122,8 +124,10 @@ class _RegistrarPagoInternoSheetState
             key: const Key('campo_monto_pago_interno'),
             controller: _montoCtrl,
             keyboardType: TextInputType.number,
+            inputFormatters: const [CopInputFormatter()],
             decoration: const InputDecoration(
               labelText: 'Monto del pago',
+              prefixText: '\$ ',
               border: OutlineInputBorder(),
             ),
           ),

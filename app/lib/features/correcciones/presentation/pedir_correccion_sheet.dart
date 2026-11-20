@@ -52,7 +52,7 @@ class _PedirCorreccionSheetState extends ConsumerState<PedirCorreccionSheet> {
   @override
   void initState() {
     super.initState();
-    _montoCtrl.text = widget.movimiento.monto.toString();
+    _montoCtrl.text = formatCopSinSimbolo(widget.movimiento.monto);
     _categoria = widget.movimiento.categoria;
     _deudaId = widget.movimiento.deudaId;
   }
@@ -224,8 +224,10 @@ class _PedirCorreccionSheetState extends ConsumerState<PedirCorreccionSheet> {
                 key: const Key('campo_correccion_monto'),
                 controller: _montoCtrl,
                 keyboardType: TextInputType.number,
+                inputFormatters: const [CopInputFormatter()],
                 decoration: const InputDecoration(
                   labelText: 'Monto correcto',
+                  prefixText: '\$ ',
                   border: OutlineInputBorder(),
                 ),
               ),

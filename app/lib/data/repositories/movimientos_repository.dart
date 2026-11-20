@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
@@ -31,6 +33,23 @@ abstract class MovimientosRepository {
     required String periodoId,
     String? soloUid,
     String? categoria,
+  });
+
+  /// B3: movimientos de todo el hogar en un rango de fechas [inicio, fin],
+  /// independiente del `periodoId` de cada miembro.
+  Stream<List<Movimiento>> observarMovimientosRangoFecha({
+    required String hogarId,
+    required DateTime inicio,
+    required DateTime fin,
+    String? categoria,
+  });
+
+  /// C5: cantidad de movimientos propios del período con escrituras pendientes
+  /// de sincronizar al servidor (`metadata.hasPendingWrites`).
+  Stream<int> observarPendientesEnvio({
+    required String hogarId,
+    required String uid,
+    required String periodoId,
   });
 
   Stream<Movimiento?> observarMovimiento({
@@ -142,6 +161,42 @@ class FirebaseMovimientosRepository implements MovimientosRepository {
   }
 
   @override
+  Stream<List<Movimiento>> observarMovimientosRangoFecha({
+    required String hogarId,
+    required DateTime inicio,
+    required DateTime fin,
+    String? categoria,
+  }) {
+    final q = _movimientos(hogarId)
+        .where('fecha', isGreaterThanOrEqualTo: Timestamp.fromDate(inicio))
+        .where('fecha', isLessThanOrEqualTo: Timestamp.fromDate(fin))
+        .orderBy('fecha', descending: true);
+
+    return q.snapshots().map((snap) {
+      var lista = snap.docs.map(Movimiento.fromFirestore).toList();
+      if (categoria != null && categoria.isNotEmpty) {
+        lista = lista.where((m) => m.categoria == categoria).toList();
+      }
+      return lista;
+    });
+  }
+
+  @override
+  Stream<int> observarPendientesEnvio({
+    required String hogarId,
+    required String uid,
+    required String periodoId,
+  }) {
+    return _movimientos(hogarId)
+        .where('uid', isEqualTo: uid)
+        .where('periodoId', isEqualTo: periodoId)
+        .snapshots(includeMetadataChanges: true)
+        .map(
+          (snap) => snap.docs.where((d) => d.metadata.hasPendingWrites).length,
+        );
+  }
+
+  @override
   Stream<Movimiento?> observarMovimiento({
     required String hogarId,
     required String movimientoId,
@@ -235,21 +290,54 @@ class FirebaseMovimientosRepository implements MovimientosRepository {
       'saldoAplicado': false,
     };
 
-    await docRef.set(data);
+    // B1 (offline): no esperar confirmación del servidor; Firestore escribe en
+    // caché local al instante y sincroniza automáticamente al volver la señal.
+    unawaited(
+      docRef.set(data).catchError((Object e, StackTrace st) {
+        debugPrint('Error sincronizando movimiento ${docRef.id}: $e');
+      }),
+    );
 
     if (fotoLocal != null) {
-      final comprimida = await _comprimirFoto(fotoLocal) ?? fotoLocal;
-      final storagePath = await colaFotos.subirOEncolar(
-        hogarId: hogarId,
-        movimientoId: docRef.id,
-        archivoComprimido: comprimida,
+      // Comprimir y encolar/subir sin bloquear el cierre de la hoja.
+      unawaited(
+        _procesarFotoEnSegundoPlano(
+          hogarId: hogarId,
+          movimientoId: docRef.id,
+          fotoLocal: fotoLocal,
+          docRef: docRef,
+        ),
       );
-      if (storagePath != null) {
-        await docRef.update(<String, dynamic>{'fotoPath': storagePath});
-      }
     }
 
     return docRef.id;
+  }
+
+  Future<void> _procesarFotoEnSegundoPlano({
+    required String hogarId,
+    required String movimientoId,
+    required File fotoLocal,
+    required DocumentReference<Map<String, dynamic>> docRef,
+  }) async {
+    try {
+      final comprimida = await _comprimirFoto(fotoLocal) ?? fotoLocal;
+      final storagePath = await colaFotos.subirOEncolar(
+        hogarId: hogarId,
+        movimientoId: movimientoId,
+        archivoComprimido: comprimida,
+      );
+      if (storagePath != null) {
+        unawaited(
+          docRef
+              .update(<String, dynamic>{'fotoPath': storagePath})
+              .catchError((Object e, StackTrace st) {
+            debugPrint('Error actualizando fotoPath de $movimientoId: $e');
+          }),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error procesando foto en segundo plano ($movimientoId): $e');
+    }
   }
 
   @override
@@ -306,7 +394,14 @@ class FirebaseMovimientosRepository implements MovimientosRepository {
       updates['categoria'] = categoria;
     }
 
-    await _movimientos(hogarId).doc(movimiento.id).update(updates);
+    unawaited(
+      _movimientos(hogarId)
+          .doc(movimiento.id)
+          .update(updates)
+          .catchError((Object e, StackTrace st) {
+        debugPrint('Error sincronizando edición menor ${movimiento.id}: $e');
+      }),
+    );
   }
 
   @override
@@ -333,14 +428,18 @@ class FirebaseMovimientosRepository implements MovimientosRepository {
     }
 
     final docRef = _gastosFijos(hogarId).doc();
-    await docRef.set(<String, dynamic>{
-      'uid': uid,
-      'nombre': nombreLimpio,
-      'monto': monto,
-      'categoria': categoria,
-      'diaEsperado': diaEsperado,
-      'activo': true,
-    });
+    unawaited(
+      docRef.set(<String, dynamic>{
+        'uid': uid,
+        'nombre': nombreLimpio,
+        'monto': monto,
+        'categoria': categoria,
+        'diaEsperado': diaEsperado,
+        'activo': true,
+      }).catchError((Object e, StackTrace st) {
+        debugPrint('Error sincronizando gasto fijo ${docRef.id}: $e');
+      }),
+    );
     return docRef.id;
   }
 
@@ -368,14 +467,18 @@ class FirebaseMovimientosRepository implements MovimientosRepository {
       throw const MovimientosException('El día esperado debe estar entre 1 y 31.');
     }
 
-    await _gastosFijos(hogarId).doc(gasto.id).update(<String, dynamic>{
-      'nombre': nombreLimpio,
-      'monto': monto,
-      'categoria': categoria,
-      'diaEsperado': diaEsperado,
-      'activo': activo,
-      'uid': gasto.uid,
-    });
+    unawaited(
+      _gastosFijos(hogarId).doc(gasto.id).update(<String, dynamic>{
+        'nombre': nombreLimpio,
+        'monto': monto,
+        'categoria': categoria,
+        'diaEsperado': diaEsperado,
+        'activo': activo,
+        'uid': gasto.uid,
+      }).catchError((Object e, StackTrace st) {
+        debugPrint('Error sincronizando gasto fijo ${gasto.id}: $e');
+      }),
+    );
   }
 
   @override
@@ -383,7 +486,14 @@ class FirebaseMovimientosRepository implements MovimientosRepository {
     required String hogarId,
     required String gastoFijoId,
   }) async {
-    await _gastosFijos(hogarId).doc(gastoFijoId).delete();
+    unawaited(
+      _gastosFijos(hogarId)
+          .doc(gastoFijoId)
+          .delete()
+          .catchError((Object e, StackTrace st) {
+        debugPrint('Error eliminando gasto fijo $gastoFijoId: $e');
+      }),
+    );
   }
 
   @override
@@ -423,6 +533,38 @@ final movimientosPeriodoProvider =
         );
   },
 );
+
+final movimientosHogarRangoProvider = StreamProvider.family<
+    List<Movimiento>, ({DateTime inicio, DateTime fin, String? categoria})>(
+  (ref, args) {
+    final usuario = ref.watch(usuarioActualProvider).value;
+    final hogarId = usuario?.hogarId;
+    if (hogarId == null || hogarId.isEmpty) {
+      return Stream<List<Movimiento>>.value(const <Movimiento>[]);
+    }
+    return ref.watch(movimientosRepositoryProvider).observarMovimientosRangoFecha(
+          hogarId: hogarId,
+          inicio: args.inicio,
+          fin: args.fin,
+          categoria: args.categoria,
+        );
+  },
+);
+
+final movimientosPendientesEnvioProvider = StreamProvider<int>((ref) {
+  final usuario = ref.watch(usuarioActualProvider).value;
+  final hogarId = usuario?.hogarId;
+  if (usuario == null || hogarId == null || hogarId.isEmpty) {
+    return Stream<int>.value(0);
+  }
+  final ahora = ref.watch(clockProvider).now();
+  final periodo = periodoDe(ahora, usuario.diaInicioPeriodo);
+  return ref.watch(movimientosRepositoryProvider).observarPendientesEnvio(
+        hogarId: hogarId,
+        uid: usuario.uid,
+        periodoId: periodo.periodoId,
+      );
+});
 
 final movimientoPorIdProvider =
     StreamProvider.family<Movimiento?, String>((ref, movimientoId) {

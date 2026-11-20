@@ -1,8 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../../data/models/usuario.dart';
 import '../../data/repositories/auth_repository.dart';
+import '../../data/repositories/correcciones_repository.dart';
 import '../../data/repositories/hogar_repository.dart';
 import '../../features/auth/presentation/bienvenida_screen.dart';
 import '../../features/auth/presentation/login_screen.dart';
@@ -11,6 +13,7 @@ import '../../features/auth/presentation/recuperar_password_screen.dart';
 import '../../features/auth/presentation/registro_screen.dart';
 import '../../features/onboarding/presentation/onboarding_screen.dart';
 import '../../features/hogar/presentation/escanear_qr_screen.dart';
+import '../../features/hogar/presentation/hogar_tab_screen.dart';
 import '../../features/hogar/presentation/miembros_qr_screen.dart';
 import '../../features/hogar/presentation/sin_hogar_screen.dart';
 import '../../features/hogar/presentation/unirse_deeplink_screen.dart';
@@ -95,6 +98,7 @@ String? evaluarRedireccionRouter({
 
   const rutasConHogar = <String>{
     '/inicio',
+    '/hogar',
     '/configurar-periodo',
     '/miembros-qr',
     '/historial',
@@ -113,15 +117,96 @@ String? evaluarRedireccionRouter({
   return '/inicio';
 }
 
-final appRouterProvider = Provider<GoRouter>((ref) {
-  final uidAsync = ref.watch(authUidProvider);
-  final usuarioAsync = ref.watch(usuarioActualProvider);
-  final presupuestoAsync = ref.watch(presupuestoVigenteProvider);
-  final onboardingAsync = ref.watch(onboardingVistoProvider);
+/// Notifier ligero para re-evaluar redirecciones sin recrear el [GoRouter] (B2).
+class _RouterRefreshNotifier extends ChangeNotifier {
+  void refrescar() => notifyListeners();
+}
 
-  return GoRouter(
+/// Shell principal con barra inferior de 5 pestañas (Slice 8.5 — C1):
+/// Inicio · Movimientos · Chat · Deudas · Hogar.
+class _NavegacionPrincipalShell extends ConsumerWidget {
+  const _NavegacionPrincipalShell({required this.navigationShell});
+
+  final StatefulNavigationShell navigationShell;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final usuario = ref.watch(usuarioActualProvider).value;
+    final hogar = ref.watch(hogarActualProvider).value;
+    final esAdmin =
+        hogar != null && usuario != null && hogar.adminUid == usuario.uid;
+    final pendientesAdmin = esAdmin
+        ? (ref.watch(correccionesPendientesProvider).value?.length ?? 0)
+        : 0;
+
+    return Scaffold(
+      body: navigationShell,
+      bottomNavigationBar: NavigationBar(
+        key: const Key('barra_navegacion_inferior'),
+        selectedIndex: navigationShell.currentIndex,
+        onDestinationSelected: (index) {
+          navigationShell.goBranch(
+            index,
+            initialLocation: index == navigationShell.currentIndex,
+          );
+        },
+        destinations: [
+          const NavigationDestination(
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home_rounded),
+            label: 'Inicio',
+          ),
+          const NavigationDestination(
+            icon: Icon(Icons.receipt_long_outlined),
+            selectedIcon: Icon(Icons.receipt_long_rounded),
+            label: 'Movimientos',
+          ),
+          const NavigationDestination(
+            icon: Icon(Icons.chat_bubble_outline_rounded),
+            selectedIcon: Icon(Icons.chat_bubble_rounded),
+            label: 'Chat',
+          ),
+          const NavigationDestination(
+            icon: Icon(Icons.account_balance_wallet_outlined),
+            selectedIcon: Icon(Icons.account_balance_wallet_rounded),
+            label: 'Deudas',
+          ),
+          NavigationDestination(
+            icon: Badge(
+              isLabelVisible: pendientesAdmin > 0,
+              label: Text('$pendientesAdmin'),
+              child: const Icon(Icons.groups_outlined),
+            ),
+            selectedIcon: Badge(
+              isLabelVisible: pendientesAdmin > 0,
+              label: Text('$pendientesAdmin'),
+              child: const Icon(Icons.groups_rounded),
+            ),
+            label: 'Hogar',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+final appRouterProvider = Provider<GoRouter>((ref) {
+  final refreshNotifier = _RouterRefreshNotifier();
+
+  ref.listen(authUidProvider, (_, _) => refreshNotifier.refrescar());
+  ref.listen(usuarioActualProvider, (_, _) => refreshNotifier.refrescar());
+  ref.listen(presupuestoVigenteProvider, (_, _) => refreshNotifier.refrescar());
+  ref.listen(onboardingVistoProvider, (_, _) => refreshNotifier.refrescar());
+
+  final router = GoRouter(
     initialLocation: '/bienvenida',
+    refreshListenable: refreshNotifier,
     redirect: (context, state) {
+      final uidAsync = ref.read(authUidProvider);
+      final usuarioAsync = ref.read(usuarioActualProvider);
+      final presupuestoAsync = ref.read(presupuestoVigenteProvider);
+      final onboardingAsync = ref.read(onboardingVistoProvider);
+
       final tieneHogar = usuarioAsync.value?.hogarId != null &&
           usuarioAsync.value!.hogarId!.trim().isNotEmpty;
       final cargando = uidAsync.isLoading ||
@@ -195,10 +280,56 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         name: 'miembros-qr',
         builder: (context, state) => const MiembrosQrScreen(),
       ),
-      GoRoute(
-        path: '/inicio',
-        name: 'inicio',
-        builder: (context, state) => const InicioScreen(),
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) =>
+            _NavegacionPrincipalShell(navigationShell: navigationShell),
+        branches: [
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/inicio',
+                name: 'inicio',
+                builder: (context, state) => const InicioScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/historial',
+                name: 'historial',
+                builder: (context, state) => const HistorialMovimientosScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/chat',
+                name: 'chat',
+                builder: (context, state) => const ChatScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/deudas',
+                name: 'deudas',
+                builder: (context, state) => const DeudasScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/hogar',
+                name: 'hogar',
+                builder: (context, state) => const HogarTabScreen(),
+              ),
+            ],
+          ),
+        ],
       ),
       GoRoute(
         path: '/dashboard-admin',
@@ -211,21 +342,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const CorreccionesAdminScreen(),
       ),
       GoRoute(
-        path: '/chat',
-        name: 'chat',
-        builder: (context, state) => const ChatScreen(),
-      ),
-      GoRoute(
         path: '/desglose-miembro/:uid',
         name: 'desglose-miembro',
         builder: (context, state) => DesgloseMiembroScreen(
           miembroUid: state.pathParameters['uid'] ?? '',
         ),
-      ),
-      GoRoute(
-        path: '/historial',
-        name: 'historial',
-        builder: (context, state) => const HistorialMovimientosScreen(),
       ),
       GoRoute(
         path: '/movimiento/:id',
@@ -238,11 +359,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/gastos-fijos',
         name: 'gastos-fijos',
         builder: (context, state) => const GastosFijosScreen(),
-      ),
-      GoRoute(
-        path: '/deudas',
-        name: 'deudas',
-        builder: (context, state) => const DeudasScreen(),
       ),
       GoRoute(
         path: '/deudas-internas/:id',
@@ -258,4 +374,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
     ],
   );
+
+  ref.onDispose(() {
+    refreshNotifier.dispose();
+    router.dispose();
+  });
+
+  return router;
 });

@@ -10,10 +10,10 @@
     "deploy": "firebase deploy --only functions",
     "logs": "firebase functions:log",
     "test": "jest",
-    "test:rules": "firebase emulators:exec --only firestore \"jest --config jest.rules.config.js\""
+    "test:rules": "firebase emulators:exec --only firestore \"jest --config jest.rules.config.js --runInBand\""
   },
   "engines": {
-    "node": "20"
+    "node": "22"
   },
   "main": "lib/index.js",
   "dependencies": {

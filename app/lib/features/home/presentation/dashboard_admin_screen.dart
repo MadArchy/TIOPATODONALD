@@ -23,12 +23,12 @@ class DashboardAdminScreen extends ConsumerWidget {
 
     if (!esAdmin) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Dashboard')),
+        appBar: AppBar(title: const Text('Panel del hogar')),
         body: const Center(
           child: Padding(
             padding: EdgeInsets.all(24),
             child: Text(
-              'Solo el administrador del hogar puede ver el dashboard.',
+              'Solo el administrador del hogar puede ver el panel del hogar.',
               textAlign: TextAlign.center,
             ),
           ),
@@ -43,7 +43,7 @@ class DashboardAdminScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Todos en el hogar'),
+        title: const Text('Panel del hogar'),
       ),
       body: SafeArea(
         child: ListView(

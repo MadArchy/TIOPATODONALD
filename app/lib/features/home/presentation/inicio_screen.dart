@@ -9,20 +9,26 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/clock.dart';
 import '../../../core/utils/conectividad.dart';
 import '../../../core/utils/dinero.dart';
+import '../../../data/models/deuda.dart';
+import '../../../data/models/gasto_fijo.dart';
 import '../../../data/models/movimiento.dart';
 import '../../../data/models/resumen_periodo.dart';
 import '../../../data/repositories/auth_repository.dart';
 import '../../../data/repositories/correcciones_repository.dart';
+import '../../../data/repositories/deudas_repository.dart';
 import '../../../data/repositories/hogar_repository.dart';
 import '../../../data/repositories/movimientos_repository.dart';
+import '../../deudas_internas/application/avisos_internos_provider.dart';
 import '../../movimientos/presentation/nuevo_movimiento_sheet.dart';
+import '../../movimientos/presentation/widgets/fila_movimiento.dart';
 import '../application/home_providers.dart';
 import 'widgets/alerta_presupuesto_banner.dart';
 import 'widgets/barra_presupuesto.dart';
 import 'widgets/desglose_categorias.dart';
 import 'widgets/semaforo_card.dart';
 
-/// Pantalla de Inicio (Slice 4): semáforo, disponible/día, proyección, alertas.
+/// Pantalla de Inicio (Slice 4 + Slice 8.5):
+/// 3 bloques claros: "¿Cómo voy?" → "Pendientes" → "En qué se va" + recientes.
 class InicioScreen extends ConsumerStatefulWidget {
   const InicioScreen({super.key});
 
@@ -60,9 +66,6 @@ class _InicioScreenState extends ConsumerState<InicioScreen> {
     }
   }
 
-  /// Guarda solo localmente los banners ya vistos; `presupuestos.alertasEnviadas`
-  /// lo escribe exclusivamente el servidor (`alCrearMovimiento`) para evitar
-  /// condición de carrera con el envío de push FCM.
   Future<void> _descartarAlertasUi(List<int> umbrales) async {
     final presupuesto = ref.read(presupuestoVigenteProvider).value;
     final actualizadas = <int>{..._alertasDescartadasLocal, ...umbrales};
@@ -83,20 +86,65 @@ class _InicioScreenState extends ConsumerState<InicioScreen> {
     }
   }
 
+  /// C6: registra un gasto fijo con un toque (sin abrir el formulario).
+  Future<void> _registrarGastoFijoDirecto(GastoFijo gasto) async {
+    final usuario = ref.read(usuarioActualProvider).value;
+    final hogarId = usuario?.hogarId;
+    if (usuario == null || hogarId == null || hogarId.isEmpty) return;
+
+    final ahora = ref.read(clockProvider).now();
+    final fecha = DateTime(ahora.year, ahora.month, ahora.day);
+    try {
+      await ref.read(movimientosRepositoryProvider).crearMovimiento(
+            hogarId: hogarId,
+            uid: usuario.uid,
+            diaInicioPeriodo: usuario.diaInicioPeriodo,
+            tipo: 'gasto',
+            monto: gasto.monto,
+            categoria: gasto.categoria,
+            fecha: fecha,
+            ahora: ahora,
+            nota: gasto.nombre,
+            origen: 'gastoFijo',
+            gastoFijoId: gasto.id,
+          );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Listo: ${gasto.nombre} (${formatCop(gasto.monto)}) guardado.',
+          ),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No pudimos registrar el gasto fijo. Intenta de nuevo.'),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final usuario = ref.watch(usuarioActualProvider).value;
     final hogar = ref.watch(hogarActualProvider).value;
     final presupuesto = ref.watch(presupuestoVigenteProvider).value;
     final indicadores = ref.watch(indicadoresPropiosProvider);
-    final pendientes = ref.watch(gastosFijosPendientesHoyProvider);
+    final gastosFijosPendientes = ref.watch(gastosFijosPendientesHoyProvider);
     final cuotas = ref.watch(cuotasComprometidasProvider);
     final proximosPagos = ref.watch(proximosPagosProvider);
     final resumenAnterior = ref.watch(resumenPeriodoAnteriorProvider).value;
+    final avisosInternos = ref.watch(avisosInternosProvider);
+    final pendientesEnvio =
+        ref.watch(movimientosPendientesEnvioProvider).value ?? 0;
     final ahora = ref.watch(clockProvider).now();
-    final esAdmin = hogar != null &&
-        usuario != null &&
-        hogar.adminUid == usuario.uid;
+    final esAdmin =
+        hogar != null && usuario != null && hogar.adminUid == usuario.uid;
+    final correccionesPendientes = esAdmin
+        ? (ref.watch(correccionesPendientesProvider).value?.length ?? 0)
+        : 0;
 
     ref.listen(tieneInternetProvider, (prev, next) {
       final hogarId = usuario?.hogarId;
@@ -113,7 +161,6 @@ class _InicioScreenState extends ConsumerState<InicioScreen> {
       _cargarDescartadasLocal(presupuesto.id);
     }
 
-    // Detectar alertas nuevas para banner in-app (sin escribir en Firestore).
     ref.listen(indicadoresPropiosProvider, (prev, next) {
       final prep = ref.read(presupuestoVigenteProvider).value;
       if (next == null || prep == null) return;
@@ -131,9 +178,9 @@ class _InicioScreenState extends ConsumerState<InicioScreen> {
       }
     });
 
-    final periodoId = usuario == null
-        ? null
-        : periodoDe(ahora, usuario.diaInicioPeriodo).periodoId;
+    final periodoVigente =
+        usuario == null ? null : periodoDe(ahora, usuario.diaInicioPeriodo);
+    final periodoId = periodoVigente?.periodoId;
 
     final recientesAsync = periodoId == null || usuario == null
         ? const AsyncValue<List<Movimiento>>.data(<Movimiento>[])
@@ -145,55 +192,52 @@ class _InicioScreenState extends ConsumerState<InicioScreen> {
             )),
           );
 
+    final deudas = ref.watch(deudasHogarProvider).value ?? const <Deuda>[];
+    final nombresDeuda = <String, String>{
+      for (final d in deudas) d.id: d.entidad,
+    };
+
+    // Cuotas que vencen en los próximos 3 días (C2).
+    final hoySoloFecha = DateTime(ahora.year, ahora.month, ahora.day);
+    final cuotasProximas3Dias = proximosPagos.where((p) {
+      final diff = DateTime(p.fecha.year, p.fecha.month, p.fecha.day)
+          .difference(hoySoloFecha)
+          .inDays;
+      return diff >= 0 && diff <= 3;
+    }).toList();
+
+    final hayPendientes = gastosFijosPendientes.isNotEmpty ||
+        cuotasProximas3Dias.isNotEmpty ||
+        correccionesPendientes > 0 ||
+        avisosInternos.isNotEmpty;
+
     final colores =
         Theme.of(context).extension<SemaforoColors>() ?? SemaforoColors.light;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(hogar?.nombre ?? 'Inicio'),
-        actions: [
-          if (esAdmin) ...[
-            Builder(
-              builder: (context) {
-                final nPendientes =
-                    ref.watch(correccionesPendientesProvider).value?.length ?? 0;
-                return IconButton(
-                  key: const Key('btn_ir_a_correcciones'),
-                  tooltip: 'Correcciones',
-                  onPressed: () => context.push('/correcciones'),
-                  icon: Badge(
-                    isLabelVisible: nPendientes > 0,
-                    label: Text('$nPendientes'),
-                    child: const Icon(Icons.rate_review_outlined),
-                  ),
-                );
-              },
-            ),
-            IconButton(
-              key: const Key('btn_ir_a_dashboard_admin'),
-              tooltip: 'Ver a todos',
-              onPressed: () => context.push('/dashboard-admin'),
-              icon: const Icon(Icons.dashboard_outlined),
-            ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(hogar?.nombre ?? 'Inicio'),
+            if (periodoVigente != null)
+              Text(
+                formatearRangoPeriodo(periodoVigente),
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
           ],
-          IconButton(
-            key: const Key('btn_ir_a_chat'),
-            tooltip: 'Chat',
-            onPressed: () => context.push('/chat'),
-            icon: const Icon(Icons.chat_bubble_outline),
-          ),
-          IconButton(
-            key: const Key('btn_ir_a_miembros_desde_inicio'),
-            tooltip: 'Miembros y QR',
-            onPressed: () => context.push('/miembros-qr'),
-            icon: const Icon(Icons.group_outlined),
-          ),
-          IconButton(
-            key: const Key('btn_ir_a_perfil_desde_inicio'),
-            tooltip: 'Mi perfil',
-            onPressed: () => context.push('/perfil'),
-            icon: const Icon(Icons.account_circle_outlined),
-          ),
+        ),
+        actions: [
+          if (pendientesEnvio > 0)
+            Padding(
+              padding: const EdgeInsets.only(right: 12),
+              child: Chip(
+                key: const Key('chip_pendientes_envio'),
+                avatar: const Icon(Icons.cloud_upload_outlined, size: 18),
+                label: Text('$pendientesEnvio por enviar'),
+                visualDensity: VisualDensity.compact,
+              ),
+            ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
@@ -211,6 +255,7 @@ class _InicioScreenState extends ConsumerState<InicioScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  // ── BLOQUE 1: ¿Cómo voy? ───────────────────────────────────
                   if (_alertasPendientesUi.isNotEmpty) ...[
                     AlertaPresupuestoBanner(
                       umbrales: _alertasPendientesUi,
@@ -280,7 +325,7 @@ class _InicioScreenState extends ConsumerState<InicioScreen> {
                         ),
                       ),
                     ],
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
                     Row(
                       children: [
                         Expanded(
@@ -299,108 +344,131 @@ class _InicioScreenState extends ConsumerState<InicioScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 24),
-                    DesgloseCategorias(indicadores: indicadores),
                   ],
-                  if (proximosPagos.isNotEmpty) ...[
-                    const SizedBox(height: 24),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            'Próximos pagos',
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleMedium
-                                ?.copyWith(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                        TextButton(
-                          key: const Key('btn_ver_todas_deudas'),
-                          onPressed: () => context.push('/deudas'),
-                          child: const Text('Ver todas'),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    ...proximosPagos.take(5).map((p) {
-                      return ListTile(
-                        key: Key('proximo_pago_${p.deuda.id}'),
-                        contentPadding: EdgeInsets.zero,
-                        leading: const Icon(Icons.event_outlined),
-                        title: Text(p.deuda.entidad),
-                        subtitle: Text(
-                          '${formatearDiaMesCorto(p.fecha)} · '
-                          '${formatCop(p.deuda.cuotaMensual)}',
-                        ),
-                        onTap: () => context.push('/deudas'),
-                      );
-                    }),
-                  ],
-                  if (pendientes.isNotEmpty) ...[
+
+                  // ── BLOQUE 2: Pendientes (accionable arriba) ───────────────
+                  if (hayPendientes) ...[
                     const SizedBox(height: 24),
                     Text(
-                      'Gastos fijos por registrar',
+                      'Pendientes',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
                     ),
                     const SizedBox(height: 8),
-                    ...pendientes.map((g) {
+                    ...gastosFijosPendientes.map((g) {
                       return Card(
                         key: Key('tarjeta_gasto_fijo_${g.id}'),
                         color: Theme.of(context).colorScheme.primaryContainer,
-                        child: ListTile(
-                          title: Text(
-                            '¿Registrar ${g.nombre} ${formatCop(g.monto)}?',
-                          ),
-                          trailing: const Icon(Icons.chevron_right),
-                          onTap: () => mostrarNuevoMovimientoSheet(
-                            context,
-                            desdeGastoFijo: g,
+                        child: Padding(
+                          padding: const EdgeInsets.all(14),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Text(
+                                '¿Registrar ${g.nombre} ${formatCop(g.monto)}?',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleSmall
+                                    ?.copyWith(fontWeight: FontWeight.bold),
+                              ),
+                              const SizedBox(height: 10),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: FilledButton(
+                                      key: Key('btn_registrar_fijo_${g.id}'),
+                                      onPressed: () =>
+                                          _registrarGastoFijoDirecto(g),
+                                      child: const Text('Registrar'),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  OutlinedButton(
+                                    key: Key('btn_cambiar_fijo_${g.id}'),
+                                    onPressed: () =>
+                                        mostrarNuevoMovimientoSheet(
+                                      context,
+                                      desdeGastoFijo: g,
+                                    ),
+                                    child: const Text('Cambiar monto'),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
                         ),
                       );
                     }),
-                  ],
-                  const SizedBox(height: 24),
-                  OutlinedButton.icon(
-                    key: const Key('btn_abrir_miembros_qr'),
-                    onPressed: () => context.push('/miembros-qr'),
-                    icon: const Icon(Icons.qr_code_2_rounded),
-                    label: const Text('Miembros y código QR'),
-                  ),
-                  const SizedBox(height: 12),
-                  OutlinedButton.icon(
-                    key: const Key('btn_abrir_historial'),
-                    onPressed: () => context.push('/historial'),
-                    icon: const Icon(Icons.receipt_long_rounded),
-                    label: const Text('Ver historial'),
-                  ),
-                  const SizedBox(height: 12),
-                  OutlinedButton.icon(
-                    key: const Key('btn_abrir_deudas'),
-                    onPressed: () => context.push('/deudas'),
-                    icon: const Icon(Icons.account_balance_outlined),
-                    label: const Text('Deudas del hogar'),
-                  ),
-                  if (esAdmin) ...[
-                    const SizedBox(height: 12),
-                    FilledButton.tonalIcon(
-                      key: const Key('btn_abrir_dashboard_admin'),
-                      onPressed: () => context.push('/dashboard-admin'),
-                      icon: const Icon(Icons.dashboard_outlined),
-                      label: const Text('Ver a todos del hogar'),
-                    ),
-                  ],
-                  const SizedBox(height: 24),
-                  Text(
-                    'Tus movimientos recientes',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
+                    ...cuotasProximas3Dias.map((p) {
+                      return Card(
+                        key: Key('proximo_pago_${p.deuda.id}'),
+                        child: ListTile(
+                          leading: const Icon(Icons.event_outlined),
+                          title: Text('Cuota: ${p.deuda.entidad}'),
+                          subtitle: Text(
+                            'Vence ${formatearDiaMesCorto(p.fecha)} · '
+                            '${formatCop(p.deuda.cuotaMensual)}',
+                          ),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: () => context.go('/deudas'),
                         ),
+                      );
+                    }),
+                    if (correccionesPendientes > 0)
+                      Card(
+                        key: const Key('tarjeta_pendiente_correcciones'),
+                        child: ListTile(
+                          leading: const Icon(Icons.fact_check_outlined),
+                          title: Text(
+                            correccionesPendientes == 1
+                                ? '1 corrección por revisar'
+                                : '$correccionesPendientes correcciones por revisar',
+                          ),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: () => context.push('/correcciones'),
+                        ),
+                      ),
+                    ...avisosInternos.take(3).map((aviso) {
+                      return Card(
+                        child: ListTile(
+                          leading: const Icon(Icons.handshake_outlined),
+                          title: Text(aviso.titulo),
+                          subtitle: Text(aviso.detalle),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: () =>
+                              context.push('/deudas-internas/${aviso.deudaId}'),
+                        ),
+                      );
+                    }),
+                  ],
+
+                  // ── BLOQUE 3: En qué se va ─────────────────────────────────
+                  if (indicadores != null && presupuesto != null) ...[
+                    const SizedBox(height: 24),
+                    DesgloseCategorias(indicadores: indicadores),
+                  ],
+
+                  // ── Movimientos recientes (legibles, sin periodoId) ────────
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Tus movimientos recientes',
+                          style:
+                              Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () => context.go('/historial'),
+                        child: const Text('Ver todos'),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 4),
                   recientesAsync.when(
                     loading: () => const Padding(
                       padding: EdgeInsets.all(16),
@@ -418,17 +486,17 @@ class _InicioScreenState extends ConsumerState<InicioScreen> {
                       }
                       return Column(
                         children: recientes.map((m) {
-                          final esGasto =
-                              m.tipo == 'gasto' || m.tipo == 'pagoCuota';
-                          return ListTile(
-                            contentPadding: EdgeInsets.zero,
-                            title: Text(
-                              '${esGasto ? '-' : '+'}${formatCop(m.monto)}',
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: FilaMovimiento(
+                              movimiento: m,
+                              ahora: ahora,
+                              nombreDeuda: m.deudaId != null
+                                  ? nombresDeuda[m.deudaId!]
+                                  : null,
+                              onTap: () =>
+                                  context.push('/movimiento/${m.id}'),
                             ),
-                            subtitle: Text(m.periodoId),
-                            trailing: const Icon(Icons.chevron_right),
-                            onTap: () =>
-                                context.push('/movimiento/${m.id}'),
                           );
                         }).toList(),
                       );
@@ -511,7 +579,7 @@ class _TarjetaCierrePeriodo extends StatelessWidget {
                 ),
           ),
           const SizedBox(height: 4),
-          Text('Período ${resumen.periodoId}'),
+          Text(formatearRangoDesdePeriodoId(resumen.periodoId)),
           const SizedBox(height: 8),
           Text(
             'Gastaste ${formatCop(resumen.gastado)} de ${formatCop(resumen.presupuesto)}',

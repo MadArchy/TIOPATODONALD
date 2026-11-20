@@ -9,7 +9,7 @@ Si el product owner cambia alguna, actualizar aquí y en `02_reglas_negocio.md`.
 | --- | --- | --- |
 | 1 | Nombre | "PATO DONALD" solo interno; nombre propio antes de publicar |
 | 2 | Período por usuario vs datos del hogar | Cada dato se mide con el período de su dueño; dashboard muestra a cada miembro en su período; totales del hogar con el período del admin |
-| 3 | Cambio de día de inicio | Aplica desde el siguiente período |
+| 3 | Cambio de día de inicio | Se guarda en `diaInicioPendiente` y nunca parte el período actual. Al cerrar el período vigente, si aún no es el día D nuevo, corre un **período puente** hasta el día D nuevo copiando automáticamente el presupuesto vigente (para que la familia no quede bloqueada ni pierda días); al llegar el día D nuevo, `cerrarPeriodos` cierra el puente, aplica `diaInicioPeriodo = D nuevo`, guarda `diaInicioAnterior` para tolerar movimientos offline en transición y copia el presupuesto vigente si aún no existe |
 | 4 | Ediciones menores | Nota o categoría (gasto→gasto), autor, < 24 h, período vigente; con auditoría |
 | 5 | Ventana de corrección | Período vigente + 5 días |
 | 6 | Admin se corrige a sí mismo | Se aplica y se notifica a todos |

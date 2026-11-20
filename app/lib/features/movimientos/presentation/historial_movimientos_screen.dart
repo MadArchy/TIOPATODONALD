@@ -5,12 +5,13 @@ import 'package:material_ui/material_ui.dart';
 import '../../../core/categorias.dart';
 import '../../../core/periodo.dart';
 import '../../../core/utils/clock.dart';
-import '../../../core/utils/dinero.dart';
+import '../../../data/models/deuda.dart';
 import '../../../data/models/miembro_hogar.dart';
-import '../../../data/models/movimiento.dart';
 import '../../../data/repositories/auth_repository.dart';
+import '../../../data/repositories/deudas_repository.dart';
 import '../../../data/repositories/hogar_repository.dart';
 import '../../../data/repositories/movimientos_repository.dart';
+import 'widgets/fila_movimiento.dart';
 
 /// Historial del período con filtros Míos / Del hogar y por categoría.
 class HistorialMovimientosScreen extends ConsumerStatefulWidget {
@@ -49,22 +50,38 @@ class _HistorialMovimientosScreenState
       usuario.diaInicioPeriodo,
     );
 
-    final uidFiltro = _filtroQuien == 'mios' ? usuario.uid : null;
-    final movimientosAsync = ref.watch(
-      movimientosPeriodoProvider((
-        periodoId: periodoId,
-        uid: uidFiltro,
-        categoria: _filtroCategoria,
-      )),
-    );
+    // B3: En "Del hogar" consultamos por rango de fechas (inicio–fin del período
+    // de quien mira) para incluir miembros con otro día de inicio.
+    final esDelHogar = _filtroQuien == 'hogar';
+    final movimientosAsync = esDelHogar
+        ? ref.watch(
+            movimientosHogarRangoProvider((
+              inicio: periodoMostrado.inicio,
+              fin: periodoMostrado.fin,
+              categoria: _filtroCategoria,
+            )),
+          )
+        : ref.watch(
+            movimientosPeriodoProvider((
+              periodoId: periodoId,
+              uid: usuario.uid,
+              categoria: _filtroCategoria,
+            )),
+          );
 
     final nombres = <String, String>{
       for (final m in miembros) m.uid: m.nombre,
     };
+    final deudas = ref.watch(deudasHogarProvider).value ?? const <Deuda>[];
+    final nombresDeuda = <String, String>{
+      for (final d in deudas) d.id: d.entidad,
+    };
+
+    final rangoHumano = formatearRangoPeriodo(periodoMostrado);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Historial'),
+        title: const Text('Movimientos'),
         actions: [
           IconButton(
             tooltip: 'Período anterior',
@@ -93,9 +110,7 @@ class _HistorialMovimientosScreenState
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  soloLectura
-                      ? 'Período $periodoId (solo lectura)'
-                      : 'Período $periodoId',
+                  soloLectura ? '$rangoHumano (solo lectura)' : rangoHumano,
                   style: Theme.of(context).textTheme.titleSmall,
                   textAlign: TextAlign.center,
                 ),
@@ -147,13 +162,17 @@ class _HistorialMovimientosScreenState
             child: movimientosAsync.when(
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (_, _) => const Center(
-                child: Text('No pudimos cargar el historial.'),
+                child: Text('No pudimos cargar los movimientos.'),
               ),
               data: (lista) {
                 if (lista.isEmpty) {
                   return const Center(
-                    child: Text(
-                      'Aún no registras nada este período. Toca + para empezar.',
+                    child: Padding(
+                      padding: EdgeInsets.all(24),
+                      child: Text(
+                        'Aún no registras nada este período. Toca + para empezar.',
+                        textAlign: TextAlign.center,
+                      ),
                     ),
                   );
                 }
@@ -163,9 +182,13 @@ class _HistorialMovimientosScreenState
                   separatorBuilder: (_, _) => const SizedBox(height: 8),
                   itemBuilder: (context, i) {
                     final m = lista[i];
-                    return _TarjetaMovimiento(
+                    return FilaMovimiento(
                       movimiento: m,
-                      nombreQuien: nombres[m.uid] ?? 'Miembro',
+                      ahora: ahora,
+                      nombreQuien:
+                          esDelHogar ? (nombres[m.uid] ?? 'Miembro') : null,
+                      nombreDeuda:
+                          m.deudaId != null ? nombresDeuda[m.deudaId!] : null,
                       onTap: () => context.push('/movimiento/${m.id}'),
                     );
                   },
@@ -174,53 +197,6 @@ class _HistorialMovimientosScreenState
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _TarjetaMovimiento extends StatelessWidget {
-  const _TarjetaMovimiento({
-    required this.movimiento,
-    required this.nombreQuien,
-    required this.onTap,
-  });
-
-  final Movimiento movimiento;
-  final String nombreQuien;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final cat = movimiento.categoria;
-    final esGasto = movimiento.tipo == 'gasto' || movimiento.tipo == 'pagoCuota';
-    final fecha = movimiento.fecha;
-    final fechaTxt =
-        '${fecha.day.toString().padLeft(2, '0')}/${fecha.month.toString().padLeft(2, '0')}';
-
-    return Card(
-      child: ListTile(
-        onTap: onTap,
-        leading: CircleAvatar(
-          child: Icon(
-            cat != null ? iconoCategoria(cat) : Icons.payments_rounded,
-          ),
-        ),
-        title: Text(
-          '${esGasto ? '-' : '+'}${formatCop(movimiento.monto)}',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: esGasto
-                ? Theme.of(context).colorScheme.error
-                : Colors.green.shade700,
-          ),
-        ),
-        subtitle: Text(
-          '$nombreQuien · ${cat != null ? etiquetaCategoria(cat) : 'Pago de cuota'} · $fechaTxt',
-        ),
-        trailing: movimiento.fotoPath != null
-            ? const Icon(Icons.photo_outlined)
-            : null,
       ),
     );
   }

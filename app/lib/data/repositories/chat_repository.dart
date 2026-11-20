@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/chat/domain/intencion.dart';
@@ -76,13 +79,18 @@ class FirebaseChatRepository implements ChatRepository {
     required String estado,
   }) async {
     final ref = _mensajes(hogarId, uid).doc();
-    await ref.set(<String, dynamic>{
-      'rol': rol,
-      'texto': texto,
-      'intencion': intencion?.toJson(),
-      'estado': estado,
-      'fecha': FieldValue.serverTimestamp(),
-    });
+    // B1 (offline): no esperar confirmación del servidor; Firestore persiste en caché local.
+    unawaited(
+      ref.set(<String, dynamic>{
+        'rol': rol,
+        'texto': texto,
+        'intencion': intencion?.toJson(),
+        'estado': estado,
+        'fecha': FieldValue.serverTimestamp(),
+      }).catchError((Object e, StackTrace st) {
+        debugPrint('Error sincronizando mensaje de chat: $e');
+      }),
+    );
     return ref.id;
   }
 
@@ -93,9 +101,13 @@ class FirebaseChatRepository implements ChatRepository {
     required String mensajeId,
     required String estado,
   }) async {
-    await _mensajes(hogarId, uid).doc(mensajeId).update(<String, dynamic>{
-      'estado': estado,
-    });
+    unawaited(
+      _mensajes(hogarId, uid).doc(mensajeId).update(<String, dynamic>{
+        'estado': estado,
+      }).catchError((Object e, StackTrace st) {
+        debugPrint('Error sincronizando estado de mensaje de chat: $e');
+      }),
+    );
   }
 }
 
