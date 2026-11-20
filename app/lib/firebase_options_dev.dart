@@ -31,9 +31,9 @@ class DefaultFirebaseOptionsDev {
   );
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'demo-api-key-pato-donald-dev',
-    appId: '1:000000000000:web:0000000000000000000000',
-    messagingSenderId: '000000000000',
+    apiKey: 'AIzaSyCHUfKuQsgt3mAPT6B5a4LwutBJ3LzcYGs',
+    appId: '1:543147200322:web:8db764ec699915ee6682db',
+    messagingSenderId: '543147200322',
     projectId: 'pato-donald-dev',
     storageBucket: 'pato-donald-dev.firebasestorage.app',
     authDomain: 'pato-donald-dev.firebaseapp.com',
